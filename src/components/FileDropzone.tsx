@@ -30,7 +30,7 @@ export default function FileDropzone({ onFile, loading }: Props) {
       onDrop={handleDrop}
       className={`
         border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all
-        ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50'}
+        ${dragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-300 dark:border-slate-600 hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800'}
         ${loading ? 'opacity-60 cursor-not-allowed' : ''}
       `}
     >
@@ -46,17 +46,17 @@ export default function FileDropzone({ onFile, loading }: Props) {
         {loading ? (
           <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
         ) : (
-          <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
+          <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center">
             <Upload className="w-7 h-7 text-blue-600" />
           </div>
         )}
         <div>
-          <p className="text-lg font-semibold text-slate-700">
+          <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">
             {loading ? 'Parsing FIT file...' : 'Drop a FIT file here'}
           </p>
           {!loading && (
-            <p className="text-sm text-slate-500 mt-1">
-              or click to browse — supports <code className="bg-slate-100 px-1 rounded">.fit</code> and <code className="bg-slate-100 px-1 rounded">.zip</code> files
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              or click to browse — supports <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">.fit</code> and <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">.zip</code> files
             </p>
           )}
         </div>

@@ -112,7 +112,7 @@ export default function SummaryCards({ data }: Props) {
       {sport && (
         <div className="flex items-center gap-2 mb-3">
           <span className="text-sm font-medium text-slate-500">Activity:</span>
-          <span className="text-sm font-semibold text-slate-700 capitalize">{sport}</span>
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 capitalize">{sport}</span>
           {session?.sub_sport && (
             <span className="text-xs text-slate-400 capitalize">({String(session.sub_sport)})</span>
           )}
@@ -125,13 +125,13 @@ export default function SummaryCards({ data }: Props) {
       )}
       <div className="flex flex-wrap gap-3">
         {cards.map(card => (
-          <div key={card.label} className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-2.5 min-w-0">
+          <div key={card.label} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex items-center gap-2.5 min-w-0">
             <div className={`p-1.5 rounded-lg ${card.color} flex-shrink-0`}>
               {card.icon}
             </div>
             <div className="min-w-0">
               <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{card.label}</div>
-              <div className="text-sm font-bold text-slate-800 whitespace-nowrap">{card.value}</div>
+              <div className="text-sm font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{card.value}</div>
             </div>
           </div>
         ))}
