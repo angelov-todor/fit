@@ -149,6 +149,11 @@ export default function App() {
           </>
         )}
       </main>
+
+      <footer className="text-center text-xs text-slate-400 py-6 border-t border-slate-200 mt-8">
+        &copy; {new Date().getFullYear()} angelov-todor &middot; MIT License &middot;{' '}
+        <a href="https://github.com/angelov-todor/fit" className="hover:text-slate-600 underline" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </footer>
     </div>
   );
 }
