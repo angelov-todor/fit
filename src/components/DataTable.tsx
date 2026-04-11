@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Download, ChevronDown, ChevronRight, Code } from 'lucide-react';
 import { exportToCSV, formatValue } from '../utils/fitParser';
 import type { ParsedFitData } from '../types/fit';
@@ -18,9 +18,12 @@ function TableSection({ title, rows, exportName }: TableSectionProps) {
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
-  if (rows.length === 0) return null;
+  const allKeys = useMemo(() =>
+    Array.from(new Set(rows.flatMap(r => Object.keys(r)))),
+    [rows]
+  );
 
-  const allKeys = Array.from(new Set(rows.flatMap(r => Object.keys(r))));
+  if (rows.length === 0) return null;
   const pageRows = rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const totalPages = Math.ceil(rows.length / PAGE_SIZE);
 

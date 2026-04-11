@@ -2,6 +2,8 @@ import FitParser from 'fit-file-parser';
 import JSZip from 'jszip';
 import type { ParsedFitData } from '../types/fit';
 
+export const MS_TO_KMH = 3.6;
+
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 
 export async function parseFitFile(file: File): Promise<ParsedFitData> {
@@ -84,16 +86,18 @@ function parseFitBuffer(buffer: ArrayBuffer): Promise<ParsedFitData> {
 export function exportToCSV(data: Record<string, unknown>[], filename: string): void {
   if (data.length === 0) return;
 
+  const escapeCsvField = (str: string) =>
+    str.includes(',') || str.includes('"') || str.includes('\n')
+      ? `"${str.replace(/"/g, '""')}"`
+      : str;
+
   const keys = Array.from(new Set(data.flatMap(row => Object.keys(row))));
-  const header = keys.join(',');
+  const header = keys.map(escapeCsvField).join(',');
   const rows = data.map(row =>
     keys.map(key => {
       const val = row[key];
       if (val === null || val === undefined) return '';
-      const str = String(val);
-      return str.includes(',') || str.includes('"') || str.includes('\n')
-        ? `"${str.replace(/"/g, '""')}"`
-        : str;
+      return escapeCsvField(String(val));
     }).join(',')
   );
 
@@ -144,7 +148,7 @@ export function formatValue(key: string, value: unknown): string {
 
   if (typeof value === 'number') {
     if (key === 'speed' || key === 'avg_speed' || key === 'max_speed' || key === 'enhanced_speed') {
-      return `${(value * 3.6).toFixed(2)} km/h`;
+      return `${(value * MS_TO_KMH).toFixed(2)} km/h`;
     }
     if (key === 'distance' || key === 'total_distance') {
       return value >= 1000 ? `${(value / 1000).toFixed(2)} km` : `${value.toFixed(0)} m`;

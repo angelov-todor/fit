@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { Layers, X } from 'lucide-react';
 import type { FitRecord, FitLap } from '../types/fit';
-import { formatDuration } from '../utils/fitParser';
+import { formatDuration, MS_TO_KMH } from '../utils/fitParser';
 
 interface Props {
   records: FitRecord[];
@@ -23,7 +23,7 @@ interface MetricDef {
 
 const METRICS: MetricDef[] = [
   { key: 'heart_rate',   label: 'Heart Rate',   unit: 'bpm',  color: '#ef4444' },
-  { key: 'speed',        label: 'Speed',        unit: 'km/h', color: '#3b82f6', transform: (v: number) => +(v * 3.6).toFixed(2) },
+  { key: 'speed',        label: 'Speed',        unit: 'km/h', color: '#3b82f6', altKey: 'enhanced_speed', transform: (v: number) => +(v * MS_TO_KMH).toFixed(2) },
   { key: 'power',        label: 'Power',        unit: 'W',    color: '#f59e0b' },
   { key: 'cadence',      label: 'Cadence',      unit: 'rpm',  color: '#8b5cf6' },
   { key: 'altitude',     label: 'Elevation',    unit: 'm',    color: '#10b981', altKey: 'enhanced_altitude' },
@@ -261,9 +261,9 @@ function LapStatsCard({ lap }: { lap: FitLap }) {
   if (typeof lap.max_heart_rate === 'number')
     stats.push({ label: 'Max HR', value: `${lap.max_heart_rate} bpm` });
   if (typeof lap.avg_speed === 'number')
-    stats.push({ label: 'Avg Speed', value: `${(lap.avg_speed * 3.6).toFixed(1)} km/h` });
+    stats.push({ label: 'Avg Speed', value: `${(lap.avg_speed * MS_TO_KMH).toFixed(1)} km/h` });
   if (typeof lap.max_speed === 'number')
-    stats.push({ label: 'Max Speed', value: `${(lap.max_speed * 3.6).toFixed(1)} km/h` });
+    stats.push({ label: 'Max Speed', value: `${(lap.max_speed * MS_TO_KMH).toFixed(1)} km/h` });
   if (typeof lap.avg_power === 'number')
     stats.push({ label: 'Avg Power', value: `${lap.avg_power} W` });
   if (typeof lap.max_power === 'number')
