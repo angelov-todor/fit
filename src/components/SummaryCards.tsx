@@ -121,15 +121,15 @@ export default function SummaryCards({ data }: Props) {
           )}
         </div>
       )}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="flex flex-wrap gap-3">
         {cards.map(card => (
-          <div key={card.label} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start gap-3">
-            <div className={`p-2 rounded-lg ${card.color}`}>
+          <div key={card.label} className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-2.5 min-w-0">
+            <div className={`p-1.5 rounded-lg ${card.color} flex-shrink-0`}>
               {card.icon}
             </div>
-            <div>
-              <div className="text-xs text-slate-500 font-medium">{card.label}</div>
-              <div className="text-sm font-bold text-slate-800 mt-0.5">{card.value}</div>
+            <div className="min-w-0">
+              <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{card.label}</div>
+              <div className="text-sm font-bold text-slate-800 whitespace-nowrap">{card.value}</div>
             </div>
           </div>
         ))}

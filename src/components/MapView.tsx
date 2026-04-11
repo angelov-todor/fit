@@ -1,12 +1,23 @@
-import { useMemo } from 'react';
-import { MapContainer, TileLayer, Polyline, CircleMarker, Popup } from 'react-leaflet';
+import { useEffect, useMemo, useState } from 'react';
+import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from 'react-leaflet';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import type { FitRecord } from '../types/fit';
 
 interface Props {
   records: FitRecord[];
 }
 
+function InvalidateSize({ expanded }: { expanded: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => map.invalidateSize(), 150);
+    return () => clearTimeout(timer);
+  }, [map, expanded]);
+  return null;
+}
+
 export default function MapView({ records }: Props) {
+  const [expanded, setExpanded] = useState(false);
   const trackPoints = useMemo(() =>
     records
       .filter(r => r.position_lat != null && r.position_long != null)
@@ -39,47 +50,64 @@ export default function MapView({ records }: Props) {
   const end = trackPoints[trackPoints.length - 1];
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-      <div className="p-3 border-b border-slate-100 flex items-center gap-4 text-xs text-slate-500">
-        <span>Track points: <strong className="text-slate-700">{trackPoints.length.toLocaleString()}</strong></span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full bg-green-500 inline-block" /> Start
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> End
-        </span>
-      </div>
-      <div style={{ height: '450px' }}>
-        <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <Polyline positions={latlngs} color="#3b82f6" weight={3} opacity={0.8} />
-          <CircleMarker
-            center={[start.lat, start.lng]}
-            radius={8}
-            pathOptions={{ color: '#16a34a', fillColor: '#22c55e', fillOpacity: 1, weight: 2 }}
+    <>
+      {expanded && <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setExpanded(false)} />}
+      <div className={
+        expanded
+          ? 'fixed inset-4 top-16 z-50 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xl flex flex-col'
+          : 'bg-white border border-slate-200 rounded-xl overflow-hidden'
+      }>
+        <div className="p-3 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center gap-4">
+            <span>Track points: <strong className="text-slate-700">{trackPoints.length.toLocaleString()}</strong></span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-green-500 inline-block" /> Start
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> End
+            </span>
+          </div>
+          <button
+            onClick={() => setExpanded(e => !e)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            title={expanded ? 'Collapse map' : 'Expand map'}
           >
-            <Popup>
-              <strong>Start</strong>
-              {start.time instanceof Date && <div>{start.time.toLocaleString()}</div>}
-              {start.alt != null && <div>Elevation: {start.alt.toFixed(1)}m</div>}
-            </Popup>
-          </CircleMarker>
-          <CircleMarker
-            center={[end.lat, end.lng]}
-            radius={8}
-            pathOptions={{ color: '#dc2626', fillColor: '#ef4444', fillOpacity: 1, weight: 2 }}
-          >
-            <Popup>
-              <strong>End</strong>
-              {end.time instanceof Date && <div>{end.time.toLocaleString()}</div>}
-              {end.alt != null && <div>Elevation: {end.alt.toFixed(1)}m</div>}
-            </Popup>
-          </CircleMarker>
-        </MapContainer>
+            {expanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        </div>
+        <div className={expanded ? 'flex-1' : ''} style={expanded ? undefined : { height: '450px' }}>
+          <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
+            <InvalidateSize expanded={expanded} />
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <Polyline positions={latlngs} color="#3b82f6" weight={3} opacity={0.8} />
+            <CircleMarker
+              center={[start.lat, start.lng]}
+              radius={8}
+              pathOptions={{ color: '#16a34a', fillColor: '#22c55e', fillOpacity: 1, weight: 2 }}
+            >
+              <Popup>
+                <strong>Start</strong>
+                {start.time instanceof Date && <div>{start.time.toLocaleString()}</div>}
+                {start.alt != null && <div>Elevation: {start.alt.toFixed(1)}m</div>}
+              </Popup>
+            </CircleMarker>
+            <CircleMarker
+              center={[end.lat, end.lng]}
+              radius={8}
+              pathOptions={{ color: '#dc2626', fillColor: '#ef4444', fillOpacity: 1, weight: 2 }}
+            >
+              <Popup>
+                <strong>End</strong>
+                {end.time instanceof Date && <div>{end.time.toLocaleString()}</div>}
+                {end.alt != null && <div>Elevation: {end.alt.toFixed(1)}m</div>}
+              </Popup>
+            </CircleMarker>
+          </MapContainer>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
