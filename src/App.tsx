@@ -1,0 +1,169 @@
+import { useState } from 'react';
+import { Activity, Map, BarChart2, Table2, RefreshCw, Download, Code } from 'lucide-react';
+import FileDropzone from './components/FileDropzone';
+import SummaryCards from './components/SummaryCards';
+import ChartsView from './components/ChartsView';
+import MapView from './components/MapView';
+import DataTable from './components/DataTable';
+import { parseFitFile, exportToGPX } from './utils/fitParser';
+import type { ParsedFitData } from './types/fit';
+
+type Tab = 'charts' | 'map' | 'tables';
+
+export default function App() {
+  const [fitData, setFitData] = useState<ParsedFitData | null>(null);
+  const [fileName, setFileName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>('charts');
+  const [devMode, setDevMode] = useState(false);
+
+  const handleFile = async (file: File) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await parseFitFile(file);
+      setFitData(data);
+      setFileName(file.name.replace(/\.(fit|zip)$/i, ''));
+      setActiveTab('charts');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to parse FIT file');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reset = () => {
+    setFitData(null);
+    setFileName('');
+    setError(null);
+  };
+
+  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: 'charts', label: 'Charts', icon: <BarChart2 className="w-4 h-4" /> },
+    { id: 'map', label: 'Map', icon: <Map className="w-4 h-4" /> },
+    { id: 'tables', label: 'Tables', icon: <Table2 className="w-4 h-4" /> },
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Activity className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-bold text-slate-800">FIT File Viewer</span>
+          </div>
+
+          {fitData && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setDevMode(d => !d)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                  devMode
+                    ? 'bg-slate-800 text-white border-slate-800'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <Code className="w-3.5 h-3.5" />
+                Dev Mode
+              </button>
+
+              {fitData.records.some(r => r.position_lat != null) && (
+                <button
+                  onClick={() => exportToGPX(fitData.records as Record<string, unknown>[], `${fileName}.gpx`)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-600 border border-slate-200 hover:border-slate-300 transition-all"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  GPX
+                </button>
+              )}
+
+              <button
+                onClick={reset}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-600 border border-slate-200 hover:border-slate-300 transition-all"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                New File
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+        {!fitData ? (
+          <div className="max-w-2xl mx-auto pt-16 space-y-4">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-slate-800 mb-2">FIT File Viewer</h1>
+              <p className="text-slate-500">
+                View GPS tracks, charts, and data from Garmin FIT files — all locally in your browser
+              </p>
+            </div>
+            <FileDropzone onFile={handleFile} loading={loading} />
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+                <strong>Error:</strong> {error}
+              </div>
+            )}
+            <div className="grid grid-cols-3 gap-3 text-center text-sm text-slate-500 pt-4">
+              {[
+                { icon: '📊', label: 'Interactive Charts', desc: 'HR, power, speed, cadence' },
+                { icon: '🗺️', label: 'GPS Map', desc: 'View your route on a map' },
+                { icon: '📋', label: 'Data Tables', desc: 'Browse all FIT messages' },
+              ].map(f => (
+                <div key={f.label} className="bg-white rounded-xl border border-slate-200 p-4">
+                  <div className="text-2xl mb-1">{f.icon}</div>
+                  <div className="font-semibold text-slate-700">{f.label}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{f.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* File info */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">{fileName}</h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {fitData.records.length.toLocaleString()} records · {fitData.laps.length} laps · {fitData.sessions.length} session(s)
+                </p>
+              </div>
+            </div>
+
+            {/* Summary */}
+            <SummaryCards data={fitData} />
+
+            {/* Tabs */}
+            <div className="flex border-b border-slate-200 gap-0">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all -mb-px ${
+                    activeTab === tab.id
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content */}
+            <div>
+              {activeTab === 'charts' && <ChartsView records={fitData.records} laps={fitData.laps} />}
+              {activeTab === 'map' && <MapView records={fitData.records} />}
+              {activeTab === 'tables' && <DataTable data={fitData} devMode={devMode} />}
+            </div>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
