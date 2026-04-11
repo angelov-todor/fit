@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Activity, Map, BarChart2, Table2, RefreshCw, Download, Code } from 'lucide-react';
+import { Map, BarChart2, Table2, RefreshCw, Download } from 'lucide-react';
 import FileDropzone from './components/FileDropzone';
 import SummaryCards from './components/SummaryCards';
 import ChartsView from './components/ChartsView';
@@ -16,7 +16,6 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('charts');
-  const [devMode, setDevMode] = useState(false);
 
   const handleFile = async (file: File) => {
     setLoading(true);
@@ -51,26 +50,12 @@ export default function App() {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
+            <img src="/favicon.svg" alt="FIT File Viewer" className="w-8 h-8" />
             <span className="font-bold text-slate-800">FIT File Viewer</span>
           </div>
 
           {fitData && (
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setDevMode(d => !d)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                  devMode
-                    ? 'bg-slate-800 text-white border-slate-800'
-                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <Code className="w-3.5 h-3.5" />
-                Dev Mode
-              </button>
-
               {fitData.records.some(r => r.position_lat != null) && (
                 <button
                   onClick={() => exportToGPX(fitData.records as Record<string, unknown>[], `${fileName}.gpx`)}
@@ -159,7 +144,7 @@ export default function App() {
             <div>
               {activeTab === 'charts' && <ChartsView records={fitData.records} laps={fitData.laps} />}
               {activeTab === 'map' && <MapView records={fitData.records} />}
-              {activeTab === 'tables' && <DataTable data={fitData} devMode={devMode} />}
+              {activeTab === 'tables' && <DataTable data={fitData} />}
             </div>
           </>
         )}

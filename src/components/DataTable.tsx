@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Download, ChevronDown, ChevronRight } from 'lucide-react';
+import { Download, ChevronDown, ChevronRight, Code } from 'lucide-react';
 import { exportToCSV, formatValue } from '../utils/fitParser';
 import type { ParsedFitData } from '../types/fit';
 
 interface Props {
   data: ParsedFitData;
-  devMode: boolean;
 }
 
 interface TableSectionProps {
@@ -99,7 +98,9 @@ function TableSection({ title, rows, exportName }: TableSectionProps) {
   );
 }
 
-export default function DataTable({ data, devMode }: Props) {
+export default function DataTable({ data }: Props) {
+  const [devMode, setDevMode] = useState(false);
+
   const sections = devMode
     ? Object.entries(data.rawMessages).map(([name, rows]) => ({
         title: name.replace(/_/g, ' '),
@@ -117,6 +118,19 @@ export default function DataTable({ data, devMode }: Props) {
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-end">
+        <button
+          onClick={() => setDevMode(d => !d)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+            devMode
+              ? 'bg-slate-800 text-white border-slate-800'
+              : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+          }`}
+        >
+          <Code className="w-3.5 h-3.5" />
+          Raw Data
+        </button>
+      </div>
       {sections.map(s => (
         <TableSection
           key={s.key}
