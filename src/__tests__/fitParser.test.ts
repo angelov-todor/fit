@@ -210,8 +210,6 @@ describe('exportToCSV', () => {
 
   it('escapes fields containing newlines', () => {
     exportToCSV([{ note: 'line1\nline2' }], 'test.csv');
-    const lines = getContent().split('\n');
-    // The field is wrapped in quotes, so the newline is inside the quotes
     expect(getContent()).toContain('"line1\nline2"');
   });
 
