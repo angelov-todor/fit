@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine, ReferenceArea,
+  ResponsiveContainer, ReferenceLine,
 } from 'recharts';
+import { Layers, X } from 'lucide-react';
 import type { FitRecord, FitLap } from '../types/fit';
 import { formatDuration } from '../utils/fitParser';
 
@@ -34,7 +35,7 @@ type XAxisMode = 'time' | 'distance' | 'elapsed';
 
 interface ChartPoint {
   index: number;
-  ms: number;       // raw epoch ms — used for lap filtering
+  ms: number;
   time: string;
   distance: number;
   elapsed: number;
@@ -130,24 +131,40 @@ function useChartAxisProps(data: ChartPoint[], xMode: XAxisMode) {
   return { xKey, commonAxisProps, commonYProps };
 }
 
+// ── Single metric chart with pin toggle ─────────────────────────────────────
+
 function SingleChart({
-  data, metric, xMode, showLaps, lapBoundaries, lapHighlight,
+  data, metric, xMode, showLaps, lapBoundaries, isPinned, onTogglePin,
 }: {
   data: ChartPoint[];
   metric: MetricDef;
   xMode: XAxisMode;
   showLaps: boolean;
   lapBoundaries: { x: string | number; label: string }[];
-  lapHighlight: { x1: string | number; x2: string | number } | null;
+  isPinned: boolean;
+  onTogglePin: () => void;
 }) {
   const { commonAxisProps, commonYProps } = useChartAxisProps(data, xMode);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-3">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: metric.color }} />
-        <span className="text-xs font-semibold text-slate-700">{metric.label}</span>
-        <span className="text-xs text-slate-400">({metric.unit})</span>
+    <div className={`bg-white border border-slate-200 rounded-xl p-3 transition-opacity ${isPinned ? 'opacity-40' : ''}`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: metric.color }} />
+          <span className="text-xs font-semibold text-slate-700">{metric.label}</span>
+          <span className="text-xs text-slate-400">({metric.unit})</span>
+        </div>
+        <button
+          onClick={onTogglePin}
+          title={isPinned ? 'Remove from overlay' : 'Add to overlay'}
+          className={`p-1 rounded transition-colors ${
+            isPinned
+              ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+              : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+        </button>
       </div>
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
@@ -156,10 +173,6 @@ function SingleChart({
           <YAxis {...commonYProps} />
           <Tooltip content={<CustomTooltip xMode={xMode} />} />
           {showLaps && <LapLines boundaries={lapBoundaries} />}
-          {lapHighlight && (
-            <ReferenceArea x1={lapHighlight.x1} x2={lapHighlight.x2}
-              fill="#3b82f6" fillOpacity={0.08} stroke="#3b82f6" strokeOpacity={0.2} />
-          )}
           <Line type="monotone" dataKey={metric.key} stroke={metric.color}
             strokeWidth={1.5} dot={false} name={metric.key} connectNulls={false} isAnimationActive={false} />
         </LineChart>
@@ -168,15 +181,17 @@ function SingleChart({
   );
 }
 
+// ── Overlay chart with unpin buttons ────────────────────────────────────────
+
 function OverlayChart({
-  data, metrics, xMode, showLaps, lapBoundaries, lapHighlight,
+  data, metrics, xMode, showLaps, lapBoundaries, onUnpin,
 }: {
   data: ChartPoint[];
   metrics: MetricDef[];
   xMode: XAxisMode;
   showLaps: boolean;
   lapBoundaries: { x: string | number; label: string }[];
-  lapHighlight: { x1: string | number; x2: string | number } | null;
+  onUnpin: (key: string) => void;
 }) {
   const { commonAxisProps, commonYProps } = useChartAxisProps(data, xMode);
   const hasRight = metrics.length >= 2;
@@ -189,8 +204,15 @@ function OverlayChart({
             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: m.color }} />
             {m.label}
             <span className="font-normal opacity-70">
-              ({m.unit}){i === 0 ? ' ←' : i === 1 ? ' →' : ''}
+              ({m.unit}){i === 0 ? ' \u2190' : i === 1 ? ' \u2192' : ''}
             </span>
+            <button
+              onClick={() => onUnpin(m.key)}
+              title={`Remove ${m.label} from overlay`}
+              className="p-0.5 rounded hover:bg-slate-100 transition-colors opacity-50 hover:opacity-100"
+            >
+              <X className="w-3 h-3" />
+            </button>
           </span>
         ))}
       </div>
@@ -198,20 +220,14 @@ function OverlayChart({
         <LineChart data={data} margin={{ top: 4, right: hasRight ? 44 : 8, left: 0, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis {...commonAxisProps} />
-          {/* First metric → left Y-axis */}
           <YAxis yAxisId="left" {...commonYProps}
             tick={{ ...commonYProps.tick, fill: metrics[0].color }} />
-          {/* Second metric → right Y-axis */}
           {hasRight && (
             <YAxis yAxisId="right" orientation="right" {...commonYProps} width={40}
               tick={{ ...commonYProps.tick, fill: metrics[1].color }} />
           )}
           <Tooltip content={<CustomTooltip xMode={xMode} />} />
           {showLaps && <LapLines boundaries={lapBoundaries} />}
-          {lapHighlight && (
-            <ReferenceArea x1={lapHighlight.x1} x2={lapHighlight.x2}
-              fill="#3b82f6" fillOpacity={0.08} stroke="#3b82f6" strokeOpacity={0.2} />
-          )}
           {metrics.map((m, i) => (
             <Line key={m.key}
               yAxisId={i === 0 ? 'left' : i === 1 ? 'right' : 'left'}
@@ -223,6 +239,53 @@ function OverlayChart({
     </div>
   );
 }
+
+// ── Lap stats card ──────────────────────────────────────────────────────────
+
+function LapStatsCard({ lap }: { lap: FitLap }) {
+  const stats: { label: string; value: string }[] = [];
+
+  if (typeof lap.total_elapsed_time === 'number')
+    stats.push({ label: 'Duration', value: formatDuration(lap.total_elapsed_time) });
+  if (typeof lap.total_distance === 'number')
+    stats.push({ label: 'Distance', value: lap.total_distance >= 1000
+      ? `${(lap.total_distance / 1000).toFixed(2)} km`
+      : `${lap.total_distance.toFixed(0)} m` });
+  if (typeof lap.avg_heart_rate === 'number')
+    stats.push({ label: 'Avg HR', value: `${lap.avg_heart_rate} bpm` });
+  if (typeof lap.max_heart_rate === 'number')
+    stats.push({ label: 'Max HR', value: `${lap.max_heart_rate} bpm` });
+  if (typeof lap.avg_speed === 'number')
+    stats.push({ label: 'Avg Speed', value: `${(lap.avg_speed * 3.6).toFixed(1)} km/h` });
+  if (typeof lap.max_speed === 'number')
+    stats.push({ label: 'Max Speed', value: `${(lap.max_speed * 3.6).toFixed(1)} km/h` });
+  if (typeof lap.avg_power === 'number')
+    stats.push({ label: 'Avg Power', value: `${lap.avg_power} W` });
+  if (typeof lap.max_power === 'number')
+    stats.push({ label: 'Max Power', value: `${lap.max_power} W` });
+  if (typeof lap.avg_cadence === 'number')
+    stats.push({ label: 'Avg Cadence', value: `${lap.avg_cadence} rpm` });
+  const ascent = (lap as Record<string, unknown>).total_ascent;
+  if (typeof ascent === 'number')
+    stats.push({ label: 'Elev Gain', value: `${ascent.toFixed(0)} m` });
+
+  if (stats.length === 0) return null;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-3">
+      <div className="flex flex-wrap gap-x-6 gap-y-2">
+        {stats.map(s => (
+          <div key={s.label} className="flex flex-col">
+            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">{s.label}</span>
+            <span className="text-sm font-semibold text-slate-700">{s.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Main ChartsView ─────────────────────────────────────────────────────────
 
 export default function ChartsView({ records, laps }: Props) {
   const [overlayMetrics, setOverlayMetrics] = useState<Set<string>>(new Set());
@@ -274,43 +337,14 @@ export default function ChartsView({ records, laps }: Props) {
       });
   }, [records]);
 
-  const findNearest = useCallback((targetMs: number) => {
-    let best = allChartData[0];
-    let bestDiff = Infinity;
-    for (const p of allChartData) {
-      const diff = Math.abs(p.ms - targetMs);
-      if (diff < bestDiff) { bestDiff = diff; best = p; }
-    }
-    return best;
-  }, [allChartData]);
-
-  const xValForPoint = useCallback((point: ChartPoint) => {
-    if (xMode === 'distance') return point.distance;
-    if (xMode === 'elapsed') return point.elapsed;
-    return point.time;
-  }, [xMode]);
-
-  // Lap boundaries
-  const lapBoundaries = useMemo(() => {
-    if (!showLaps || laps.length < 2 || allChartData.length === 0) return [];
-
-    return laps.slice(1).map((lap, i) => {
-      const boundaryMs = lap.start_time instanceof Date ? lap.start_time.getTime() : null;
-      if (boundaryMs == null) return null;
-
-      const point = findNearest(boundaryMs);
-      return { x: xValForPoint(point), label: `L${i + 2}` };
-    }).filter((b): b is { x: string | number; label: string } => b !== null);
-  }, [laps, xMode, showLaps, allChartData, findNearest, xValForPoint]);
-
-  // Selected lap highlight region
-  const lapHighlight = useMemo<{ x1: string | number; x2: string | number } | null>(() => {
-    if (selectedLap == null || allChartData.length === 0) return null;
+  // Filter data to selected lap (zoom), or show all
+  const chartData = useMemo(() => {
+    if (selectedLap == null) return allChartData;
     const lap = laps[selectedLap];
-    if (!lap) return null;
+    if (!lap) return allChartData;
 
     const startMs = lap.start_time instanceof Date ? lap.start_time.getTime() : null;
-    if (startMs == null) return null;
+    if (startMs == null) return allChartData;
 
     const nextLap = laps[selectedLap + 1];
     const endMs = nextLap?.start_time instanceof Date
@@ -319,18 +353,45 @@ export default function ChartsView({ records, laps }: Props) {
       ? lap.timestamp.getTime()
       : null;
 
-    const startPoint = findNearest(startMs);
-    const endPoint = endMs != null ? findNearest(endMs) : allChartData[allChartData.length - 1];
+    return allChartData.filter(p =>
+      p.ms >= startMs && (endMs == null || p.ms <= endMs)
+    );
+  }, [allChartData, selectedLap, laps]);
 
-    return { x1: xValForPoint(startPoint), x2: xValForPoint(endPoint) };
-  }, [selectedLap, laps, allChartData, findNearest, xValForPoint]);
+  // Lap boundaries (hidden when zoomed into a single lap)
+  const lapBoundaries = useMemo(() => {
+    if (!showLaps || selectedLap != null || laps.length < 2 || allChartData.length === 0) return [];
+
+    const findNearest = (targetMs: number) => {
+      let best = allChartData[0];
+      let bestDiff = Infinity;
+      for (const p of allChartData) {
+        const diff = Math.abs(p.ms - targetMs);
+        if (diff < bestDiff) { bestDiff = diff; best = p; }
+      }
+      return best;
+    };
+
+    const xValForPoint = (point: ChartPoint) => {
+      if (xMode === 'distance') return point.distance;
+      if (xMode === 'elapsed') return point.elapsed;
+      return point.time;
+    };
+
+    return laps.slice(1).map((lap, i) => {
+      const boundaryMs = lap.start_time instanceof Date ? lap.start_time.getTime() : null;
+      if (boundaryMs == null) return null;
+      const point = findNearest(boundaryMs);
+      return { x: xValForPoint(point), label: `L${i + 2}` };
+    }).filter((b): b is { x: string | number; label: string } => b !== null);
+  }, [laps, xMode, showLaps, selectedLap, allChartData]);
 
   const handleSelectLap = (i: number) => {
     setSelectedLap(prev => prev === i ? null : i);
   };
 
   const overlayList = availableMetrics.filter(m => overlayMetrics.has(m.key));
-  const individualMetrics = availableMetrics.filter(m => !overlayMetrics.has(m.key));
+  const showLapLines = showLaps && selectedLap == null;
 
   return (
     <div className="space-y-3">
@@ -356,39 +417,20 @@ export default function ChartsView({ records, laps }: Props) {
           </div>
         </div>
 
-        <div className="w-px h-5 bg-slate-200 hidden sm:block" />
-
-        {/* Show laps toggle */}
         {laps.length > 1 && (
-          <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={showLaps}
-              onChange={e => setShowLaps(e.target.checked)}
-              className="rounded"
-            />
-            Lap lines
-          </label>
-        )}
-
-        <div className="w-px h-5 bg-slate-200 hidden sm:block" />
-
-        {/* Overlay checkboxes */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-xs text-slate-500 font-medium">Overlay:</span>
-          {availableMetrics.map(m => (
-            <label key={m.key} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+          <>
+            <div className="w-px h-5 bg-slate-200 hidden sm:block" />
+            <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
               <input
                 type="checkbox"
-                checked={overlayMetrics.has(m.key)}
-                onChange={() => toggleOverlay(m.key)}
+                checked={showLaps}
+                onChange={e => setShowLaps(e.target.checked)}
                 className="rounded"
               />
-              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: m.color }} />
-              {m.label}
+              Lap lines
             </label>
-          ))}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Lap summary pills */}
@@ -421,42 +463,36 @@ export default function ChartsView({ records, laps }: Props) {
         </div>
       )}
 
-      {/* Overlay chart (when 2+ metrics selected) */}
+      {/* Lap stats card (when zoomed into a lap) */}
+      {selectedLap != null && laps[selectedLap] && (
+        <LapStatsCard lap={laps[selectedLap]} />
+      )}
+
+      {/* Overlay chart (when 2+ metrics pinned) */}
       {overlayList.length >= 2 && (
         <OverlayChart
-          data={allChartData}
+          data={chartData}
           metrics={overlayList}
           xMode={xMode}
-          showLaps={showLaps}
+          showLaps={showLapLines}
           lapBoundaries={lapBoundaries}
-          lapHighlight={lapHighlight}
+          onUnpin={toggleOverlay}
         />
       )}
 
-      {/* Individual charts for all non-overlaid metrics */}
-      {individualMetrics.map(m => (
+      {/* Individual charts for all available metrics */}
+      {availableMetrics.map(m => (
         <SingleChart
           key={m.key}
-          data={allChartData}
+          data={chartData}
           metric={m}
           xMode={xMode}
-          showLaps={showLaps}
+          showLaps={showLapLines}
           lapBoundaries={lapBoundaries}
-          lapHighlight={lapHighlight}
+          isPinned={overlayMetrics.has(m.key)}
+          onTogglePin={() => toggleOverlay(m.key)}
         />
       ))}
-
-      {/* If only 1 overlay metric checked, still show it individually */}
-      {overlayList.length === 1 && (
-        <SingleChart
-          data={allChartData}
-          metric={overlayList[0]}
-          xMode={xMode}
-          showLaps={showLaps}
-          lapBoundaries={lapBoundaries}
-          lapHighlight={lapHighlight}
-        />
-      )}
 
       {records.length === 0 && (
         <div className="text-center text-slate-400 py-12">No record data available for charts</div>
