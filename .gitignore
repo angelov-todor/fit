@@ -40,6 +40,9 @@ coverage
 # Claude Code
 .claude/
 
+# Firebase
+.firebase/
+
 # Misc
 *.tgz
 .cache
