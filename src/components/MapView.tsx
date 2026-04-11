@@ -1,23 +1,38 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from 'react-leaflet';
 import { Maximize2, Minimize2 } from 'lucide-react';
+import type { LatLngBoundsExpression } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import type { FitRecord } from '../types/fit';
 
 interface Props {
   records: FitRecord[];
 }
 
-function InvalidateSize({ expanded }: { expanded: boolean }) {
+function FitBoundsAndResize({ bounds, expanded }: { bounds: LatLngBoundsExpression; expanded: boolean }) {
   const map = useMap();
   useEffect(() => {
-    const timer = setTimeout(() => map.invalidateSize(), 150);
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+      map.fitBounds(bounds, { padding: [30, 30] });
+    }, 150);
     return () => clearTimeout(timer);
-  }, [map, expanded]);
+  }, [map, bounds, expanded]);
   return null;
 }
 
 export default function MapView({ records }: Props) {
   const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setExpanded(false);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [expanded]);
+
   const trackPoints = useMemo(() =>
     records
       .filter(r => r.position_lat != null && r.position_long != null)
@@ -41,22 +56,21 @@ export default function MapView({ records }: Props) {
   }
 
   const latlngs: [number, number][] = trackPoints.map(p => [p.lat, p.lng]);
-  const center: [number, number] = [
-    trackPoints.reduce((sum, p) => sum + p.lat, 0) / trackPoints.length,
-    trackPoints.reduce((sum, p) => sum + p.lng, 0) / trackPoints.length,
-  ];
 
   const start = trackPoints[0];
   const end = trackPoints[trackPoints.length - 1];
 
   return (
     <>
-      {expanded && <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setExpanded(false)} />}
-      <div className={
-        expanded
-          ? 'fixed inset-4 top-16 z-50 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xl flex flex-col'
-          : 'bg-white border border-slate-200 rounded-xl overflow-hidden'
-      }>
+      {expanded && <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setExpanded(false)} role="presentation" />}
+      <div
+        className={
+          expanded
+            ? 'fixed inset-4 top-16 z-50 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xl flex flex-col'
+            : 'bg-white border border-slate-200 rounded-xl overflow-hidden'
+        }
+        {...(expanded ? { role: 'dialog', 'aria-label': 'Expanded map' } : {})}
+      >
         <div className="p-3 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-4">
             <span>Track points: <strong className="text-slate-700">{trackPoints.length.toLocaleString()}</strong></span>
@@ -76,8 +90,8 @@ export default function MapView({ records }: Props) {
           </button>
         </div>
         <div className={expanded ? 'flex-1' : ''} style={expanded ? undefined : { height: '450px' }}>
-          <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
-            <InvalidateSize expanded={expanded} />
+          <MapContainer bounds={latlngs as LatLngBoundsExpression} boundsOptions={{ padding: [30, 30] }} style={{ height: '100%', width: '100%' }}>
+            <FitBoundsAndResize bounds={latlngs as LatLngBoundsExpression} expanded={expanded} />
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

@@ -14,7 +14,7 @@ export default function FileDropzone({ onFile, loading }: Props) {
     e.preventDefault();
     setDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file) onFile(file);
+    if (file && /\.(fit|zip)$/i.test(file.name)) onFile(file);
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {

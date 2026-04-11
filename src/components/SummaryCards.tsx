@@ -30,7 +30,7 @@ export default function SummaryCards({ data }: Props) {
       .map(r => r[key])
       .filter((v): v is number => typeof v === 'number');
     if (vals.length === 0) return undefined;
-    return Math.max(...vals);
+    return vals.reduce((a, b) => Math.max(a, b), -Infinity);
   };
 
   const totalDistance = session?.total_distance as number | undefined

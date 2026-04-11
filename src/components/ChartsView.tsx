@@ -134,7 +134,7 @@ function useChartAxisProps(data: ChartPoint[], xMode: XAxisMode) {
 // ── Single metric chart with pin toggle ─────────────────────────────────────
 
 function SingleChart({
-  data, metric, xMode, showLaps, lapBoundaries, isPinned, onTogglePin,
+  data, metric, xMode, showLaps, lapBoundaries, isPinned, overlayFull, onTogglePin,
 }: {
   data: ChartPoint[];
   metric: MetricDef;
@@ -142,9 +142,11 @@ function SingleChart({
   showLaps: boolean;
   lapBoundaries: { x: string | number; label: string }[];
   isPinned: boolean;
+  overlayFull: boolean;
   onTogglePin: () => void;
 }) {
   const { commonAxisProps, commonYProps } = useChartAxisProps(data, xMode);
+  const pinDisabled = !isPinned && overlayFull;
 
   return (
     <div className={`bg-white border border-slate-200 rounded-xl p-3 transition-opacity ${isPinned ? 'opacity-40' : ''}`}>
@@ -156,10 +158,13 @@ function SingleChart({
         </div>
         <button
           onClick={onTogglePin}
-          title={isPinned ? 'Remove from overlay' : 'Add to overlay'}
+          disabled={pinDisabled}
+          title={isPinned ? 'Remove from overlay' : pinDisabled ? 'Overlay full (max 2)' : 'Add to overlay'}
           className={`p-1 rounded transition-colors ${
             isPinned
               ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+              : pinDisabled
+              ? 'text-slate-300 cursor-not-allowed'
               : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
           }`}
         >
@@ -293,11 +298,16 @@ export default function ChartsView({ records, laps }: Props) {
   const [showLaps, setShowLaps]       = useState(true);
   const [selectedLap, setSelectedLap] = useState<number | null>(null);
 
+  const MAX_OVERLAY = 2;
+
   const toggleOverlay = useCallback((key: string) => {
     setOverlayMetrics(prev => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (next.has(key)) {
+        next.delete(key);
+      } else if (next.size < MAX_OVERLAY) {
+        next.add(key);
+      }
       return next;
     });
   }, []);
@@ -363,13 +373,16 @@ export default function ChartsView({ records, laps }: Props) {
     if (!showLaps || selectedLap != null || laps.length < 2 || allChartData.length === 0) return [];
 
     const findNearest = (targetMs: number) => {
-      let best = allChartData[0];
-      let bestDiff = Infinity;
-      for (const p of allChartData) {
-        const diff = Math.abs(p.ms - targetMs);
-        if (diff < bestDiff) { bestDiff = diff; best = p; }
+      let lo = 0, hi = allChartData.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if ((allChartData[mid].ms as number) < targetMs) lo = mid + 1;
+        else hi = mid;
       }
-      return best;
+      if (lo > 0 && Math.abs((allChartData[lo - 1].ms as number) - targetMs) < Math.abs((allChartData[lo].ms as number) - targetMs)) {
+        return allChartData[lo - 1];
+      }
+      return allChartData[lo];
     };
 
     const xValForPoint = (point: ChartPoint) => {
@@ -490,6 +503,7 @@ export default function ChartsView({ records, laps }: Props) {
           showLaps={showLapLines}
           lapBoundaries={lapBoundaries}
           isPinned={overlayMetrics.has(m.key)}
+          overlayFull={overlayMetrics.size >= MAX_OVERLAY}
           onTogglePin={() => toggleOverlay(m.key)}
         />
       ))}

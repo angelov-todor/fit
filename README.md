@@ -1,5 +1,7 @@
 # FIT File Viewer
 
+**Live app: https://fit-file-viewer.web.app**
+
 A browser-based viewer for Garmin FIT activity files. Drop a `.fit` or `.zip` file and instantly explore your workout data — no uploads, everything runs locally.
 
 ## Features

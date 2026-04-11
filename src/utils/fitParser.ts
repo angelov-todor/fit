@@ -2,7 +2,13 @@ import FitParser from 'fit-file-parser';
 import JSZip from 'jszip';
 import type { ParsedFitData } from '../types/fit';
 
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+
 export async function parseFitFile(file: File): Promise<ParsedFitData> {
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum supported size is 100 MB.`);
+  }
+
   let buffer: ArrayBuffer;
 
   if (file.name.toLowerCase().endsWith('.zip')) {
@@ -112,7 +118,7 @@ export function exportToGPX(records: Record<string, unknown>[], filename: string
   const gpx = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="FIT File Viewer" xmlns="http://www.topografix.com/GPX/1/1">
   <trk>
-    <name>${filename.replace('.gpx', '')}</name>
+    <name>${filename.replace('.gpx', '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</name>
     <trkseg>
 ${trackPoints.join('\n')}
     </trkseg>
@@ -129,7 +135,7 @@ function downloadText(content: string, filename: string, mimeType: string): void
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 export function formatValue(key: string, value: unknown): string {
