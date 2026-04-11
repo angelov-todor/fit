@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { formatDuration, formatValue, exportToCSV, exportToGPX, parseFitFile, MS_TO_KMH } from '../utils/fitParser';
 
