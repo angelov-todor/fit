@@ -116,6 +116,27 @@ describe('formatValue', () => {
     expect(formatValue('sport', 'cycling')).toBe('cycling');
     expect(formatValue('flag', true)).toBe('true');
   });
+
+  it('JSON-stringifies plain object values (not "[object Object]")', () => {
+    expect(formatValue('message_index', { value: 0, selected: false, reserved: false }))
+      .toBe('{"value":0,"selected":false,"reserved":false}');
+    expect(formatValue('left_right_balance', { value: 50, right: true }))
+      .toBe('{"value":50,"right":true}');
+  });
+
+  it('JSON-stringifies array values', () => {
+    expect(formatValue('records', [1, 2, 3])).toBe('[1,2,3]');
+    expect(formatValue('events_in_lap', [])).toBe('[]');
+  });
+
+  it('falls back to String for values that cannot be JSON-serialized', () => {
+    const circular: Record<string, unknown> = { a: 1 };
+    circular.self = circular;
+    // Should not throw; should return something non-"[object Object]"
+    const result = formatValue('weird', circular);
+    expect(typeof result).toBe('string');
+    expect(result).not.toBe('[object Object]');
+  });
 });
 
 // ── MS_TO_KMH constant ─────────────────────────────────────────────────────
