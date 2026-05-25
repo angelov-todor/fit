@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { Map, BarChart2, Table2, RefreshCw, Download, Moon, Sun, Monitor } from 'lucide-react';
+import { Map, BarChart2, Table2, Scissors, RefreshCw, Download, Moon, Sun, Monitor } from 'lucide-react';
 import FileDropzone from './components/FileDropzone';
 import SummaryCards from './components/SummaryCards';
 import ChartsView from './components/ChartsView';
 import MapView from './components/MapView';
 import DataTable from './components/DataTable';
+import EditView from './components/EditView';
 import { parseFitFile, exportToGPX } from './utils/fitParser';
 import { useDarkMode } from './hooks/useDarkMode';
 import type { ParsedFitData } from './types/fit';
 
-type Tab = 'charts' | 'map' | 'tables';
+type Tab = 'charts' | 'map' | 'tables' | 'edit';
 
 export default function App() {
   const [fitData, setFitData] = useState<ParsedFitData | null>(null);
@@ -42,8 +43,9 @@ export default function App() {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'charts', label: 'Charts', icon: <BarChart2 className="w-4 h-4" /> },
-    { id: 'map', label: 'Map', icon: <Map className="w-4 h-4" /> },
+    { id: 'map',    label: 'Map',    icon: <Map className="w-4 h-4" /> },
     { id: 'tables', label: 'Tables', icon: <Table2 className="w-4 h-4" /> },
+    { id: 'edit',   label: 'Edit',   icon: <Scissors className="w-4 h-4" /> },
   ];
 
   const ThemeIcon = theme === 'system' ? Monitor : theme === 'dark' ? Moon : Sun;
@@ -160,6 +162,7 @@ export default function App() {
               {activeTab === 'charts' && <ChartsView records={fitData.records} laps={fitData.laps} />}
               {activeTab === 'map' && <MapView records={fitData.records} />}
               {activeTab === 'tables' && <DataTable data={fitData} />}
+              {activeTab === 'edit' && <EditView data={fitData} fileName={fileName} />}
             </div>
           </>
         )}
