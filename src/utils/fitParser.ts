@@ -177,6 +177,14 @@ export function formatValue(key: string, value: unknown): string {
     return value.toFixed(2);
   }
 
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return Array.isArray(value) ? '[array]' : '[object]';
+    }
+  }
+
   return String(value);
 }
 
