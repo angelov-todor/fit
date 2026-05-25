@@ -102,3 +102,44 @@ export interface ParsedFitData {
   events: Record<string, unknown>[];
   rawMessages: Record<string, Record<string, unknown>[]>;
 }
+
+export interface FitEvent {
+  timestamp?: Date;
+  event?: string;          // e.g. 'timer'
+  event_type?: string;     // e.g. 'start', 'stop_all'
+  [key: string]: unknown;
+}
+
+export interface SessionTotals {
+  total_elapsed_time: number;
+  total_timer_time: number;
+  total_distance: number;
+  avg_heart_rate?: number;
+  max_heart_rate?: number;
+  avg_cadence?: number;
+  max_cadence?: number;
+  avg_power?: number;
+  max_power?: number;
+  avg_speed?: number;
+  max_speed?: number;
+  avg_altitude?: number;
+  max_altitude?: number;
+  min_altitude?: number;
+  total_ascent?: number;
+  total_descent?: number;
+}
+
+export interface TrimRange {
+  start: Date;
+  end: Date;
+}
+
+export interface TrimmedFitData {
+  fileId: FitFileId;
+  activity: FitActivity;
+  sessions: [FitSession];
+  laps: FitLap[];
+  records: FitRecord[];
+  events: FitEvent[];
+  deviceInfos: FitDeviceInfo[];
+}
