@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { ParsedFitData } from '../types/fit';
 import { formatDuration, MS_TO_KMH } from '../utils/fitParser';
-import { Heart, Zap, Gauge, Mountain, Timer, Route, Thermometer, Activity } from 'lucide-react';
+import { Heart, Zap, Gauge, Mountain, Timer, Route, Thermometer, Activity, Flame } from 'lucide-react';
 
 interface Props {
   data: ParsedFitData;
@@ -48,6 +48,7 @@ export default function SummaryCards({ data }: Props) {
     const maxSpeed = (session?.max_speed as number | undefined) ?? max('speed');
     const totalAscent = session?.total_ascent as number | undefined;
     const totalDescent = session?.total_descent as number | undefined;
+    const totalCalories = session?.total_calories as number | undefined;
     const avgTemp = avg('temperature');
     const avgCadence = (session?.avg_cadence as number | undefined) ?? avg('cadence');
 
@@ -65,6 +66,12 @@ export default function SummaryCards({ data }: Props) {
         value: formatDuration(totalTime),
         icon: <Timer className="w-5 h-5" />,
         color: 'text-purple-600 bg-purple-50',
+      },
+      totalCalories != null && {
+        label: 'Calories',
+        value: `${Math.round(totalCalories)} kcal`,
+        icon: <Flame className="w-5 h-5" />,
+        color: 'text-amber-600 bg-amber-50',
       },
       avgHR != null && {
         label: 'Avg HR',
