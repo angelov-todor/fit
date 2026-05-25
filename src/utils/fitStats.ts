@@ -1,5 +1,15 @@
 import type { FitRecord, SessionTotals } from '../types/fit';
 
+function nums(records: FitRecord[], key: keyof FitRecord): number[] {
+  return records
+    .map(r => r[key])
+    .filter((v): v is number => typeof v === 'number');
+}
+
+function avg(values: number[]): number {
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
 export function computeSessionTotals(records: FitRecord[]): SessionTotals {
   if (records.length === 0) {
     return { total_elapsed_time: 0, total_timer_time: 0, total_distance: 0 };
@@ -18,17 +28,31 @@ export function computeSessionTotals(records: FitRecord[]): SessionTotals {
       ? last.distance - first.distance
       : 0;
 
-  const hr = records.map(r => r.heart_rate).filter((v): v is number => typeof v === 'number');
-
   const totals: SessionTotals = {
     total_elapsed_time: totalElapsed,
     total_timer_time: totalElapsed,
     total_distance: totalDistance,
   };
 
-  if (hr.length > 0) {
-    totals.avg_heart_rate = Math.round(hr.reduce((a, b) => a + b, 0) / hr.length);
-    totals.max_heart_rate = Math.max(...hr);
+  // Integer-rounded metrics
+  const intMetrics: Array<['heart_rate' | 'cadence' | 'power', keyof SessionTotals, keyof SessionTotals]> = [
+    ['heart_rate', 'avg_heart_rate', 'max_heart_rate'],
+    ['cadence',    'avg_cadence',    'max_cadence'],
+    ['power',      'avg_power',      'max_power'],
+  ];
+  for (const [src, avgKey, maxKey] of intMetrics) {
+    const vs = nums(records, src);
+    if (vs.length > 0) {
+      (totals as unknown as Record<string, number>)[avgKey] = Math.round(avg(vs));
+      (totals as unknown as Record<string, number>)[maxKey] = Math.max(...vs);
+    }
+  }
+
+  // Float metric: speed
+  const speed = nums(records, 'speed');
+  if (speed.length > 0) {
+    totals.avg_speed = avg(speed);
+    totals.max_speed = Math.max(...speed);
   }
 
   return totals;
