@@ -13,6 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@garmin/fitsdk": "^21.205.0",
     "@tailwindcss/vite": "^4.2.2",
     "fit-file-parser": "^2.3.3",
     "jszip": "^3.10.1",
