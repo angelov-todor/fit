@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1e3a8a"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Activity pulse line, decorative -->
+  <polyline
+    points="80,420 220,420 270,300 330,500 400,160 480,440 540,300 620,400 760,400 820,260 880,460 960,360 1120,360"
+    stroke="white" stroke-opacity="0.9" stroke-width="8"
+    stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- App icon (mirrors favicon) -->
+  <g transform="translate(80, 70)">
+    <rect width="96" height="96" rx="20" fill="white"/>
+    <polyline points="12,56 28,56 34,40 42,72 50,24 58,64 64,44 72,56 84,56"
+      stroke="#2563eb" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+
+  <!-- Title -->
+  <text x="80" y="280" fill="white" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+    font-size="96" font-weight="800" letter-spacing="-2">FIT File Viewer</text>
+
+  <!-- Subtitle -->
+  <text x="80" y="340" fill="white" fill-opacity="0.85"
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+    font-size="36" font-weight="500">Garmin activity data in your browser</text>
+
+  <!-- Feature pills -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" font-size="22" font-weight="600" fill="white">
+    <g transform="translate(80, 540)">
+      <rect width="170" height="48" rx="24" fill="white" fill-opacity="0.18"/>
+      <text x="85" y="32" text-anchor="middle">Charts</text>
+    </g>
+    <g transform="translate(266, 540)">
+      <rect width="170" height="48" rx="24" fill="white" fill-opacity="0.18"/>
+      <text x="85" y="32" text-anchor="middle">GPS Map</text>
+    </g>
+    <g transform="translate(452, 540)">
+      <rect width="170" height="48" rx="24" fill="white" fill-opacity="0.18"/>
+      <text x="85" y="32" text-anchor="middle">Trim &amp; Export</text>
+    </g>
+    <g transform="translate(638, 540)">
+      <rect width="220" height="48" rx="24" fill="white" fill-opacity="0.18"/>
+      <text x="110" y="32" text-anchor="middle">100% Local</text>
+    </g>
+  </g>
+</svg>
