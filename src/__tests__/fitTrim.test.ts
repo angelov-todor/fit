@@ -67,3 +67,71 @@ describe('trimFitData — lap filtering', () => {
     expect(result.laps[0].start_time).toEqual(t(3));
   });
 });
+
+describe('trimFitData — events', () => {
+  it('keeps events inside the trim range', () => {
+    const data = makeFitData();
+    // Add a pause/resume pair inside the range
+    data.events.push(
+      { timestamp: t(4), event: 'timer', event_type: 'stop' },
+      { timestamp: t(5), event: 'timer', event_type: 'start' },
+    );
+    const result = trimFitData(data, { start: t(2), end: t(7) });
+    // Original boundary events are outside the range; intermediate pause/resume is inside
+    expect(result.events.some(e => e.timestamp?.getTime() === t(4).getTime())).toBe(true);
+    expect(result.events.some(e => e.timestamp?.getTime() === t(5).getTime())).toBe(true);
+  });
+
+  it('synthesizes a start event at range.start when missing', () => {
+    const data = makeFitData();
+    const result = trimFitData(data, { start: t(2), end: t(7) });
+    const first = result.events[0];
+    expect(first.timestamp).toEqual(t(2));
+    expect(first.event).toBe('timer');
+    expect(first.event_type).toBe('start');
+  });
+
+  it('synthesizes a stop event at range.end when missing', () => {
+    const data = makeFitData();
+    const result = trimFitData(data, { start: t(2), end: t(7) });
+    const last = result.events[result.events.length - 1];
+    expect(last.timestamp).toEqual(t(7));
+    expect(last.event).toBe('timer');
+    expect(last.event_type).toBe('stop_all');
+  });
+
+  it('does not duplicate a start event that is already at range.start', () => {
+    const data = makeFitData();
+    // Push a start event exactly at t(2)
+    data.events.push({ timestamp: t(2), event: 'timer', event_type: 'start' });
+    const result = trimFitData(data, { start: t(2), end: t(7) });
+    const startsAtT2 = result.events.filter(
+      e => e.timestamp?.getTime() === t(2).getTime() && e.event_type === 'start',
+    );
+    expect(startsAtT2).toHaveLength(1);
+  });
+});
+
+describe('trimFitData — session and activity rollup', () => {
+  it('recomputes session totals from trimmed records', () => {
+    const data = makeFitData();
+    const result = trimFitData(data, { start: t(2), end: t(7) });
+    expect(result.sessions[0].total_elapsed_time).toBe(5);  // t7 - t2
+    expect(result.sessions[0].total_distance).toBe(50);     // normalized 50 - 0
+    expect(result.sessions[0].num_laps).toBe(1);
+  });
+
+  it('scales total_calories proportionally to elapsed time', () => {
+    const data = makeFitData();
+    // Original session has total_calories: 100 over 9s. Trim to 5s.
+    const result = trimFitData(data, { start: t(2), end: t(7) });
+    expect(result.sessions[0].total_calories).toBeCloseTo((100 * 5) / 9, 5);
+  });
+
+  it('updates activity total_timer_time and num_sessions=1', () => {
+    const data = makeFitData();
+    const result = trimFitData(data, { start: t(2), end: t(7) });
+    expect(result.activity.total_timer_time).toBe(5);
+    expect(result.activity.num_sessions).toBe(1);
+  });
+});

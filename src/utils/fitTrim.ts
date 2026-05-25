@@ -30,7 +30,29 @@ export function trimFitData(data: ParsedFitData, range: TrimRange): TrimmedFitDa
       l.timestamp <= range.end,
   );
 
-  const events: FitEvent[] = (data.events as FitEvent[]).filter(e => inRange(e, range));
+  const filteredEvents: FitEvent[] = (data.events as FitEvent[]).filter(e => inRange(e, range));
+
+  const hasStartAtRange = filteredEvents.some(
+    e =>
+      e.timestamp?.getTime() === range.start.getTime() &&
+      e.event === 'timer' &&
+      e.event_type === 'start',
+  );
+  const hasStopAtRange = filteredEvents.some(
+    e =>
+      e.timestamp?.getTime() === range.end.getTime() &&
+      e.event === 'timer' &&
+      (e.event_type === 'stop_all' || e.event_type === 'stop'),
+  );
+
+  const events: FitEvent[] = [];
+  if (!hasStartAtRange) {
+    events.push({ timestamp: range.start, event: 'timer', event_type: 'start' });
+  }
+  events.push(...filteredEvents);
+  if (!hasStopAtRange) {
+    events.push({ timestamp: range.end, event: 'timer', event_type: 'stop_all' });
+  }
 
   const totals = computeSessionTotals(normalizedRecords);
   const originalSession = data.sessions[0] ?? {};
