@@ -55,5 +55,32 @@ export function computeSessionTotals(records: FitRecord[]): SessionTotals {
     totals.max_speed = Math.max(...speed);
   }
 
+  // Altitude: prefer enhanced_altitude, fall back to altitude
+  const altitudes = records
+    .map(r => (typeof r.enhanced_altitude === 'number' ? r.enhanced_altitude : r.altitude))
+    .filter((v): v is number => typeof v === 'number');
+
+  if (altitudes.length > 0) {
+    totals.avg_altitude = avg(altitudes);
+    totals.max_altitude = Math.max(...altitudes);
+    totals.min_altitude = Math.min(...altitudes);
+
+    // 3-point moving average to suppress single-sample noise, then sum deltas
+    const smoothed: number[] = altitudes.map((_, i) => {
+      const window = altitudes.slice(Math.max(0, i - 1), Math.min(altitudes.length, i + 2));
+      return avg(window);
+    });
+
+    let ascent = 0;
+    let descent = 0;
+    for (let i = 1; i < smoothed.length; i++) {
+      const d = smoothed[i] - smoothed[i - 1];
+      if (d > 0) ascent += d;
+      else descent -= d;
+    }
+    totals.total_ascent = ascent;
+    totals.total_descent = descent;
+  }
+
   return totals;
 }

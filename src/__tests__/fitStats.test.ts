@@ -57,3 +57,66 @@ describe('computeSessionTotals — avg/max metrics', () => {
     expect('avg_power' in result).toBe(false);
   });
 });
+
+describe('computeSessionTotals — altitude and elevation', () => {
+  it('reports avg/max/min altitude using enhanced_altitude when present', () => {
+    const records: FitRecord[] = [
+      { timestamp: t(0), distance: 0,  enhanced_altitude: 100, altitude: 50 },
+      { timestamp: t(1), distance: 5,  enhanced_altitude: 110, altitude: 50 },
+      { timestamp: t(2), distance: 10, enhanced_altitude: 120, altitude: 50 },
+    ];
+    const result = computeSessionTotals(records);
+    expect(result.avg_altitude).toBe(110);
+    expect(result.max_altitude).toBe(120);
+    expect(result.min_altitude).toBe(100);
+  });
+
+  it('falls back to altitude when enhanced_altitude is missing', () => {
+    const records: FitRecord[] = [
+      { timestamp: t(0), distance: 0,  altitude: 100 },
+      { timestamp: t(1), distance: 5,  altitude: 200 },
+    ];
+    const result = computeSessionTotals(records);
+    expect(result.max_altitude).toBe(200);
+  });
+
+  it('reports zero ascent and descent for constant altitude', () => {
+    const records: FitRecord[] = Array.from({ length: 10 }, (_, i) => ({
+      timestamp: t(i), distance: i, enhanced_altitude: 100,
+    }));
+    const result = computeSessionTotals(records);
+    expect(result.total_ascent).toBe(0);
+    expect(result.total_descent).toBe(0);
+  });
+
+  it('sums positive deltas for a monotonic climb (after smoothing)', () => {
+    // 10 samples rising by 1 m each step → ~8 m after 3-point smoothing
+    const records: FitRecord[] = Array.from({ length: 10 }, (_, i) => ({
+      timestamp: t(i), distance: i, enhanced_altitude: 100 + i,
+    }));
+    const result = computeSessionTotals(records);
+    expect(result.total_ascent).toBeCloseTo(8, 0);
+    expect(result.total_descent).toBe(0);
+  });
+
+  it('sums descent on a monotonic descent', () => {
+    const records: FitRecord[] = Array.from({ length: 10 }, (_, i) => ({
+      timestamp: t(i), distance: i, enhanced_altitude: 100 - i,
+    }));
+    const result = computeSessionTotals(records);
+    expect(result.total_ascent).toBe(0);
+    expect(result.total_descent).toBeCloseTo(8, 0);
+  });
+
+  it('smooths out single-sample noise', () => {
+    // Mostly flat with a single noisy spike — smoothing should suppress it
+    const alts = [100, 100, 100, 105, 100, 100, 100]; // 1 spike of +5
+    const records: FitRecord[] = alts.map((a, i) => ({
+      timestamp: t(i), distance: i, enhanced_altitude: a,
+    }));
+    const result = computeSessionTotals(records);
+    // Without smoothing this would record ~5m of ascent. With a 3-point
+    // moving average, the spike contributes well under 5m.
+    expect(result.total_ascent ?? 0).toBeLessThan(5);
+  });
+});
