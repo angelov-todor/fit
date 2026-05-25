@@ -9,6 +9,16 @@ const EVENT_TYPE_TO_SDK: Record<string, string> = {
   stop_all: 'stopAll',
 };
 
+// FIT stores GPS as int32 semicircles; fit-file-parser decodes to degrees.
+// The encoder writes raw semicircles, so we convert back on the way out.
+const SEMICIRCLES_PER_DEGREE = 2 ** 31 / 180;
+
+function degreesToSemicircles(degrees: unknown): number | undefined {
+  return typeof degrees === 'number'
+    ? Math.round(degrees * SEMICIRCLES_PER_DEGREE)
+    : undefined;
+}
+
 function fileIdMesg(f: FitFileId): Mesg {
   return {
     type: f.type ?? 'activity',
@@ -40,8 +50,8 @@ function recordMesg(r: FitRecord): Mesg {
     altitude: r.altitude,
     enhancedAltitude: r.enhanced_altitude,
     enhancedSpeed: r.enhanced_speed,
-    positionLat: r.position_lat,
-    positionLong: r.position_long,
+    positionLat: degreesToSemicircles(r.position_lat),
+    positionLong: degreesToSemicircles(r.position_long),
     temperature: r.temperature,
   };
 }
@@ -50,10 +60,10 @@ function lapMesg(l: FitLap): Mesg {
   return {
     timestamp: l.timestamp,
     startTime: l.start_time,
-    startPositionLat: l.start_position_lat,
-    startPositionLong: l.start_position_long,
-    endPositionLat: l.end_position_lat,
-    endPositionLong: l.end_position_long,
+    startPositionLat: degreesToSemicircles(l.start_position_lat),
+    startPositionLong: degreesToSemicircles(l.start_position_long),
+    endPositionLat: degreesToSemicircles(l.end_position_lat),
+    endPositionLong: degreesToSemicircles(l.end_position_long),
     totalElapsedTime: l.total_elapsed_time,
     totalTimerTime: l.total_timer_time,
     totalDistance: l.total_distance,
