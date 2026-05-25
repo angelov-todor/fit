@@ -3,7 +3,7 @@ import { Download } from 'lucide-react';
 import TrimChart, { type TrimMetric } from './TrimChart';
 import { trimFitData } from '../utils/fitTrim';
 import { encodeFit } from '../utils/fitEncoder';
-import { formatDuration, MS_TO_KMH } from '../utils/fitParser';
+import { formatDuration } from '../utils/fitParser';
 import type { ParsedFitData } from '../types/fit';
 
 interface Props {
@@ -205,11 +205,6 @@ export default function EditView({ data, fileName }: Props) {
           {exporting ? 'Exporting…' : 'Export trimmed FIT'}
         </button>
       </div>
-
-      {/* Reference: avg/max stats are computed for export only.
-          MS_TO_KMH is imported to stay consistent with the rest of the app
-          in case future preview enhancements want km/h speed display. */}
-      <span className="hidden">{MS_TO_KMH}</span>
     </div>
   );
 }
