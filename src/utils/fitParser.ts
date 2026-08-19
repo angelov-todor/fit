@@ -131,6 +131,9 @@ export function formatValue(key: string, value: unknown): string {
     if (key === 'altitude' || key === 'enhanced_altitude' || key === 'avg_altitude' || key === 'max_altitude') {
       return `${value.toFixed(1)} m`;
     }
+    if (key === 'total_ascent' || key === 'total_descent') {
+      return `${Math.round(value)} m`;
+    }
     if (key === 'heart_rate' || key === 'avg_heart_rate' || key === 'max_heart_rate') {
       return `${value} bpm`;
     }
@@ -161,6 +164,15 @@ export function formatValue(key: string, value: unknown): string {
   }
 
   return String(value);
+}
+
+/**
+ * Ascent and descent as whole metres. Values derived from GPX geometry carry
+ * meaningless float precision, and a metre either way does not change the read.
+ */
+export function formatElevation(ascent: number, descent?: number): string {
+  const up = `+${Math.round(ascent)}m`;
+  return descent != null ? `${up} / -${Math.round(descent)}m` : up;
 }
 
 export function formatDuration(seconds: number): string {
