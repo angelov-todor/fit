@@ -101,6 +101,8 @@ export interface ParsedFitData {
   file_id?: FitFileId;
   events: Record<string, unknown>[];
   rawMessages: Record<string, Record<string, unknown>[]>;
+  /** Which file format this data came from. Absent means FIT. */
+  source?: 'fit' | 'gpx';
 }
 
 export interface FitEvent {

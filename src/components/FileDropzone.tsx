@@ -14,7 +14,7 @@ export default function FileDropzone({ onFile, loading }: Props) {
     e.preventDefault();
     setDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file && /\.(fit|zip)$/i.test(file.name)) onFile(file);
+    if (file && /\.(fit|zip|gpx)$/i.test(file.name)) onFile(file);
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -37,7 +37,7 @@ export default function FileDropzone({ onFile, loading }: Props) {
       <input
         ref={inputRef}
         type="file"
-        accept=".fit,.zip"
+        accept=".fit,.zip,.gpx"
         className="hidden"
         onChange={handleChange}
         disabled={loading}
@@ -52,11 +52,11 @@ export default function FileDropzone({ onFile, loading }: Props) {
         )}
         <div>
           <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">
-            {loading ? 'Parsing FIT file...' : 'Drop a FIT file here'}
+            {loading ? 'Parsing file...' : 'Drop a FIT or GPX file here'}
           </p>
           {!loading && (
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              or click to browse — supports <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">.fit</code> and <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">.zip</code> files
+              or click to browse — supports <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">.fit</code>, <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">.gpx</code> and <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">.zip</code> files
             </p>
           )}
         </div>

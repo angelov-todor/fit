@@ -1,45 +1,19 @@
 import FitParser from 'fit-file-parser';
-import JSZip from 'jszip';
 import type { ParsedFitData } from '../types/fit';
 
 export const MS_TO_KMH = 3.6;
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+export const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 
 export async function parseFitFile(file: File): Promise<ParsedFitData> {
   if (file.size > MAX_FILE_SIZE) {
     throw new Error(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum supported size is 100 MB.`);
   }
 
-  let buffer: ArrayBuffer;
-
-  if (file.name.toLowerCase().endsWith('.zip')) {
-    buffer = await extractFitFromZip(file);
-  } else {
-    buffer = await file.arrayBuffer();
-  }
-
-  return parseFitBuffer(buffer);
+  return parseFitBuffer(await file.arrayBuffer());
 }
 
-async function extractFitFromZip(file: File): Promise<ArrayBuffer> {
-  const zip = new JSZip();
-  const zipData = await zip.loadAsync(await file.arrayBuffer());
-
-  const fitFiles = Object.keys(zipData.files).filter(
-    name => name.toLowerCase().endsWith('.fit')
-  );
-
-  if (fitFiles.length === 0) {
-    throw new Error('No FIT files found in ZIP archive');
-  }
-
-  const fitFile = zipData.files[fitFiles[0]];
-  const content = await fitFile.async('arraybuffer');
-  return content;
-}
-
-function parseFitBuffer(buffer: ArrayBuffer): Promise<ParsedFitData> {
+export function parseFitBuffer(buffer: ArrayBuffer): Promise<ParsedFitData> {
   return new Promise((resolve, reject) => {
     const parser = new FitParser({
       force: true,
@@ -76,6 +50,7 @@ function parseFitBuffer(buffer: ArrayBuffer): Promise<ParsedFitData> {
         file_id: (raw.file_id as Record<string, unknown>) || undefined,
         events: (raw.events as Record<string, unknown>[]) || [],
         rawMessages,
+        source: 'fit',
       };
 
       resolve(parsed);

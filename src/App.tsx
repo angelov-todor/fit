@@ -6,11 +6,11 @@ import ChartsView from './components/ChartsView';
 import MapView from './components/MapView';
 import DataTable from './components/DataTable';
 import EditView from './components/EditView';
-import { parseFitFile, exportToGPX } from './utils/fitParser';
+import { exportToGPX } from './utils/fitParser';
+import { parseActivityFile } from './utils/activityParser';
+import { isTabEnabled, tabDisabledReason, defaultTab, type Tab } from './utils/tabAvailability';
 import { useDarkMode } from './hooks/useDarkMode';
 import type { ParsedFitData } from './types/fit';
-
-type Tab = 'charts' | 'map' | 'tables' | 'edit';
 
 export default function App() {
   const [fitData, setFitData] = useState<ParsedFitData | null>(null);
@@ -24,12 +24,12 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const data = await parseFitFile(file);
+      const data = await parseActivityFile(file);
       setFitData(data);
-      setFileName(file.name.replace(/\.(fit|zip)$/i, ''));
-      setActiveTab('charts');
+      setFileName(file.name.replace(/\.(fit|zip|gpx)$/i, ''));
+      setActiveTab(defaultTab(data));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to parse FIT file');
+      setError(err instanceof Error ? err.message : 'Failed to parse file');
     } finally {
       setLoading(false);
     }
@@ -72,7 +72,7 @@ export default function App() {
 
             {fitData && (
               <>
-                {fitData.records.some(r => r.position_lat != null) && (
+                {fitData.source !== 'gpx' && fitData.records.some(r => r.position_lat != null) && (
                   <button
                     onClick={() => exportToGPX(fitData.records as Record<string, unknown>[], `${fileName}.gpx`)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 transition-all"
@@ -101,7 +101,7 @@ export default function App() {
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">FIT File Viewer</h1>
               <p className="text-slate-500 dark:text-slate-400">
-                View GPS tracks, charts, and data from Garmin FIT files — all locally in your browser
+                View GPS tracks, charts, and data from Garmin FIT and GPX files — all locally in your browser
               </p>
             </div>
             <FileDropzone onFile={handleFile} loading={loading} />
@@ -131,7 +131,8 @@ export default function App() {
               <div>
                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{fileName}</h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {fitData.records.length.toLocaleString()} records · {fitData.laps.length} laps · {fitData.sessions.length} session(s)
+                  {fitData.records.length.toLocaleString()} {fitData.source === 'gpx' ? 'track points' : 'records'}
+                  {fitData.source !== 'gpx' && ` · ${fitData.laps.length} laps · ${fitData.sessions.length} session(s)`}
                 </p>
               </div>
             </div>
@@ -141,28 +142,44 @@ export default function App() {
 
             {/* Tabs */}
             <div className="flex border-b border-slate-200 dark:border-slate-700 gap-0">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all -mb-px ${
-                    activeTab === tab.id
-                      ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                      : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  {tab.icon}
-                  {tab.label}
-                </button>
-              ))}
+              {tabs.map(tab => {
+                const disabledReason = tabDisabledReason(tab.id, fitData);
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    disabled={disabledReason !== undefined}
+                    title={disabledReason}
+                    aria-disabled={disabledReason !== undefined}
+                    className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all -mb-px ${
+                      disabledReason
+                        ? 'border-transparent text-slate-400 dark:text-slate-600 opacity-50 cursor-not-allowed'
+                        : activeTab === tab.id
+                        ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                        : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Tab content */}
             <div>
-              {activeTab === 'charts' && <ChartsView records={fitData.records} laps={fitData.laps} />}
-              {activeTab === 'map' && <MapView records={fitData.records} />}
-              {activeTab === 'tables' && <DataTable data={fitData} />}
-              {activeTab === 'edit' && <EditView data={fitData} fileName={fileName} />}
+              {isTabEnabled(activeTab, fitData) ? (
+                <>
+                  {activeTab === 'charts' && <ChartsView records={fitData.records} laps={fitData.laps} />}
+                  {activeTab === 'map' && <MapView records={fitData.records} />}
+                  {activeTab === 'tables' && <DataTable data={fitData} />}
+                  {activeTab === 'edit' && <EditView data={fitData} fileName={fileName} />}
+                </>
+              ) : (
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-12 text-center text-sm text-slate-400">
+                  {tabDisabledReason(activeTab, fitData)}
+                </div>
+              )}
             </div>
           </>
         )}
