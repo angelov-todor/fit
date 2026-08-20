@@ -6,40 +6,14 @@ import {
 import { Layers, X } from 'lucide-react';
 import type { FitRecord, FitLap } from '../types/fit';
 import { formatDuration, MS_TO_KMH } from '../utils/fitParser';
+import {
+  METRICS, buildChartPoints, availableXAxisModes,
+  type MetricDef, type ChartPoint, type XAxisMode,
+} from '../utils/chartData';
 
 interface Props {
   records: FitRecord[];
   laps: FitLap[];
-}
-
-interface MetricDef {
-  key: string;
-  label: string;
-  unit: string;
-  color: string;
-  altKey?: string;
-  transform?: (v: number) => number;
-}
-
-const METRICS: MetricDef[] = [
-  { key: 'heart_rate',   label: 'Heart Rate',   unit: 'bpm',  color: '#ef4444' },
-  { key: 'speed',        label: 'Speed',        unit: 'km/h', color: '#3b82f6', altKey: 'enhanced_speed', transform: (v: number) => +(v * MS_TO_KMH).toFixed(2) },
-  { key: 'power',        label: 'Power',        unit: 'W',    color: '#f59e0b' },
-  { key: 'cadence',      label: 'Cadence',      unit: 'rpm',  color: '#8b5cf6' },
-  { key: 'altitude',     label: 'Elevation',    unit: 'm',    color: '#10b981', altKey: 'enhanced_altitude' },
-  { key: 'temperature',  label: 'Temperature',  unit: '°C',   color: '#06b6d4' },
-  { key: 'distance',     label: 'Distance',     unit: 'm',    color: '#64748b' },
-];
-
-type XAxisMode = 'time' | 'distance' | 'elapsed';
-
-interface ChartPoint {
-  index: number;
-  ms: number;
-  time: string;
-  distance: number;
-  elapsed: number;
-  [key: string]: number | string;
 }
 
 interface TooltipPayload {
@@ -322,6 +296,10 @@ export default function ChartsView({ records, laps }: Props) {
     });
   }, []);
 
+  const xModes = useMemo(() => availableXAxisModes(records), [records]);
+  // A planned route has no clock, so fall back to an axis it can actually plot.
+  const effectiveXMode = xModes.includes(xMode) ? xMode : xModes[0];
+
   const availableMetrics = useMemo(() =>
     METRICS.filter(m =>
       records.some(r => {
@@ -333,29 +311,7 @@ export default function ChartsView({ records, laps }: Props) {
   );
 
   // Build chart data points
-  const allChartData = useMemo<ChartPoint[]>(() => {
-    const firstTs = records[0]?.timestamp instanceof Date ? records[0].timestamp.getTime() : 0;
-    return records
-      .filter(r => r.timestamp instanceof Date)
-      .map((r, i) => {
-        const ms = (r.timestamp as Date).getTime();
-        const point: ChartPoint = {
-          index: i,
-          ms,
-          time: (r.timestamp as Date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          distance: typeof r.distance === 'number' ? r.distance : 0,
-          elapsed: Math.round((ms - firstTs) / 1000),
-        };
-        const rec = r as Record<string, unknown>;
-        for (const m of METRICS) {
-          const raw = (m.altKey ? (rec[m.altKey] ?? rec[m.key]) : rec[m.key]) as number | undefined;
-          if (raw != null) {
-            point[m.key] = m.transform ? m.transform(raw) : raw;
-          }
-        }
-        return point;
-      });
-  }, [records]);
+  const allChartData = useMemo<ChartPoint[]>(() => buildChartPoints(records), [records]);
 
   // Filter data to selected lap (zoom), or show all
   const chartData = useMemo(() => {
@@ -396,8 +352,8 @@ export default function ChartsView({ records, laps }: Props) {
     };
 
     const xValForPoint = (point: ChartPoint) => {
-      if (xMode === 'distance') return point.distance;
-      if (xMode === 'elapsed') return point.elapsed;
+      if (effectiveXMode === 'distance') return point.distance;
+      if (effectiveXMode === 'elapsed') return point.elapsed;
       return point.time;
     };
 
@@ -407,7 +363,7 @@ export default function ChartsView({ records, laps }: Props) {
       const point = findNearest(boundaryMs);
       return { x: xValForPoint(point), label: `L${i + 2}` };
     }).filter((b): b is { x: string | number; label: string } => b !== null);
-  }, [laps, xMode, showLaps, selectedLap, allChartData]);
+  }, [laps, effectiveXMode, showLaps, selectedLap, allChartData]);
 
   const handleSelectLap = (i: number) => {
     setSelectedLap(prev => prev === i ? null : i);
@@ -424,12 +380,12 @@ export default function ChartsView({ records, laps }: Props) {
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">X axis:</span>
           <div className="flex rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden text-xs">
-            {(['time', 'elapsed', 'distance'] as XAxisMode[]).map(m => (
+            {xModes.map(m => (
               <button
                 key={m}
                 onClick={() => setXMode(m)}
                 className={`px-2.5 py-1.5 font-medium transition-colors capitalize ${
-                  xMode === m
+                  effectiveXMode === m
                     ? 'bg-blue-600 text-white'
                     : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
                 }`}
@@ -496,7 +452,7 @@ export default function ChartsView({ records, laps }: Props) {
         <OverlayChart
           data={chartData}
           metrics={overlayList}
-          xMode={xMode}
+          xMode={effectiveXMode}
           showLaps={showLapLines}
           lapBoundaries={lapBoundaries}
           onUnpin={toggleOverlay}
@@ -509,7 +465,7 @@ export default function ChartsView({ records, laps }: Props) {
           key={m.key}
           data={chartData}
           metric={m}
-          xMode={xMode}
+          xMode={effectiveXMode}
           showLaps={showLapLines}
           lapBoundaries={lapBoundaries}
           isPinned={overlayMetrics.has(m.key)}

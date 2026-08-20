@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { ParsedFitData } from '../types/fit';
-import { formatDuration, MS_TO_KMH } from '../utils/fitParser';
+import { formatDuration, formatElevation, MS_TO_KMH } from '../utils/fitParser';
 import { Heart, Zap, Gauge, Mountain, Timer, Route, Thermometer, Activity, Flame } from 'lucide-react';
 
 interface Props {
@@ -93,7 +93,7 @@ export default function SummaryCards({ data }: Props) {
       },
       totalAscent != null && {
         label: 'Elevation',
-        value: `+${totalAscent}m${totalDescent != null ? ` / -${totalDescent}m` : ''}`,
+        value: formatElevation(totalAscent, totalDescent),
         icon: <Mountain className="w-5 h-5" />,
         color: 'text-orange-600 bg-orange-50',
       },

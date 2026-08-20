@@ -2,7 +2,7 @@
 
 **Live app: https://fit-file-viewer.web.app**
 
-A browser-based viewer for Garmin FIT activity files. Drop a `.fit` or `.zip` file and instantly explore your workout data — no uploads, everything runs locally.
+A browser-based viewer for Garmin FIT activity files. Drop a `.fit`, `.gpx` or `.zip` file and instantly explore your workout data — no uploads, everything runs locally.
 
 ## Features
 
@@ -11,7 +11,8 @@ A browser-based viewer for Garmin FIT activity files. Drop a `.fit` or `.zip` fi
 - **Data Tables** — browse raw FIT messages (records, laps, sessions)
 - **Lap Analysis** — filter by lap, view lap boundary lines, and lap summary pills
 - **GPX Export** — convert and download your activity as a GPX file
-- **ZIP Support** — drop a ZIP containing a FIT file and it will be extracted automatically
+- **GPX Import** — open a `.gpx` track or route; elevation, timestamps and Garmin `TrackPointExtension` data (HR, cadence, temperature, power) are read when present, and distance and speed are derived from the geometry. Tabs the file has no data for are grayed out, and the trim editor stays FIT-only.
+- **ZIP Support** — drop a ZIP containing a FIT or GPX file and it will be extracted automatically
 
 ## Getting Started
 
@@ -43,6 +44,7 @@ npm run preview
 - [Recharts](https://recharts.org/) — charts
 - [Leaflet](https://leafletjs.com/) + [React Leaflet](https://react-leaflet.js.org/) — maps
 - [fit-file-parser](https://github.com/AmiranMont662/fit-file-parser) — FIT file decoding
+- `DOMParser` — GPX decoding (no extra dependency)
 - [JSZip](https://stuk.github.io/jszip/) — ZIP extraction
 
 ## License
