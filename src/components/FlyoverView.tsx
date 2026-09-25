@@ -8,11 +8,12 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import type { FitRecord } from '../types/fit';
 import { buildRoute, positionAt, type Route } from '../utils/flyoverRoute';
-import { chaseCamera, MAX_PITCH } from '../utils/flyoverCamera';
+import { chaseCamera, groundFromTerrain, MAX_PITCH } from '../utils/flyoverCamera';
 import { advance, playFrom, type Speed } from '../utils/flyoverPlayback';
 import { mapTilerKey } from '../utils/flyoverConfig';
 import { buildStyle, routeGradient, TRAVELED_COLOR } from '../utils/flyoverStyle';
 import { flyoverStats } from '../utils/flyoverStats';
+import { canRenderMap } from '../utils/webgl';
 import { FLYOVER_NO_KEY, FLYOVER_NO_ROUTE } from '../utils/tabAvailability';
 import FlyoverControls, { FlyoverStatsPanel } from './FlyoverControls';
 
@@ -38,22 +39,9 @@ const CARD = 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-sla
 
 let webglSupport: boolean | undefined;
 
-/**
- * Whether this browser can give MapLibre a WebGL context. Probed once per page
- * load, and the probe's context released at once: browsers cap live WebGL
- * contexts, and a fresh probe on every tab switch would count against the cap.
- */
+/** Probed once per page load, not on every tab switch. */
 function supportsWebGL(): boolean {
-  if (webglSupport === undefined) {
-    try {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
-      webglSupport = gl !== null;
-      gl?.getExtension('WEBGL_lose_context')?.loseContext();
-    } catch {
-      webglSupport = false;
-    }
-  }
+  webglSupport ??= canRenderMap();
   return webglSupport;
 }
 
@@ -75,7 +63,7 @@ function setGestures(map: MapLibreMap, enabled: boolean) {
 
 /** Moves the camera, the traveled line and the rider marker to `progress`. */
 function drawFrame(map: MapLibreMap, route: Route, progress: number) {
-  const pose = chaseCamera(route, progress, p => map.queryTerrainElevation(p));
+  const pose = chaseCamera(route, progress, groundFromTerrain(p => map.queryTerrainElevation(p)));
   map.jumpTo(
     map.calculateCameraOptionsFromTo(
       new LngLat(pose.from.lng, pose.from.lat),
@@ -118,7 +106,9 @@ export default function FlyoverView({ records }: Props) {
     if (!route || !key || !webgl || !container) return;
 
     // If this throws anyway, FlyoverTab's error boundary catches it.
-    const map = new MapLibreMap({ container, style: buildStyle(key), maxPitch: MAX_PITCH });
+    // Open at the start of the route, not on the world view MapLibre defaults to.
+    const start: [number, number] = [route.points[0].lng, route.points[0].lat];
+    const map = new MapLibreMap({ container, style: buildStyle(key), maxPitch: MAX_PITCH, center: start, zoom: 14 });
     mapRef.current = map;
 
     map.on('error', e => {

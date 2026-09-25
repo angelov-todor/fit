@@ -22,6 +22,20 @@ export const MAX_PITCH = 75;
 /** Terrain height in metres, or null when tiles are not loaded yet. */
 export type GroundAt = (p: LngLatPoint) => number | null;
 
+/**
+ * Adapts MapLibre's queryTerrainElevation to GroundAt. Once terrain is on,
+ * MapLibre answers 0, not null, wherever its DEM tiles haven't loaded yet, which
+ * would put the camera at sea level: inside the mountain on a hilly ride. A
+ * reading of exactly 0 is therefore treated as unknown. At a genuine sea-level
+ * spot the camera falls back to the recorded elevation, which is near 0 anyway.
+ */
+export function groundFromTerrain(query: (p: LngLatPoint) => number | null): GroundAt {
+  return p => {
+    const height = query(p);
+    return height === null || height === 0 ? null : height;
+  };
+}
+
 export interface CameraPose {
   from: LngLatPoint;
   /** Metres above sea level. */

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chaseCamera, pitchDeg, DEFAULT_CAMERA, MAX_PITCH } from '../utils/flyoverCamera';
+import { chaseCamera, groundFromTerrain, pitchDeg, DEFAULT_CAMERA, MAX_PITCH } from '../utils/flyoverCamera';
 import { bearingDeg, haversineMeters } from '../utils/geo';
 import { SOFIA, angleBetween, end, join, routeOf, straight, toRecords } from './flyoverFixtures';
 
@@ -58,5 +58,24 @@ describe('chaseCamera', () => {
     const pitch = pitchDeg(chaseCamera(northbound(), 0.5, flat));
     expect(pitch).toBeLessThanOrEqual(MAX_PITCH);
     expect(pitch).toBeCloseTo(63.4, 1);
+  });
+});
+
+describe('groundFromTerrain', () => {
+  // MapLibre's queryTerrainElevation answers 0, not null, wherever its DEM tiles
+  // haven't loaded yet. Taken at face value, that puts the camera at sea level.
+  it('starts a mountain ride above the mountain while terrain is still loading', () => {
+    const alpine = routeOf(toRecords(straight(SOFIA, 0, 2000), () => ({ altitude: 1800 })));
+    const pose = chaseCamera(alpine, 0.5, groundFromTerrain(() => 0));
+    expect(pose.toAltitude).toBe(1800);
+    expect(pose.fromAltitude).toBe(1800 + DEFAULT_CAMERA.aboveM);
+  });
+
+  it.each([
+    [612, 612],
+    [-430, -430], // the Dead Sea road: below sea level is real ground
+    [null, null],
+  ])('passes a terrain reading of %s through as %s', (reading, want) => {
+    expect(groundFromTerrain(() => reading)(SOFIA)).toBe(want);
   });
 });
