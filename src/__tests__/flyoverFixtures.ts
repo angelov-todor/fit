@@ -1,4 +1,5 @@
 import type { FitRecord } from '../types/fit';
+import { buildRoute, type Route } from '../utils/flyoverRoute';
 import { destinationPoint, type LngLatPoint } from '../utils/geo';
 
 /** A real place away from the equator, so latitude effects are present. */
@@ -33,4 +34,11 @@ export function toRecords(
 /** Smallest angle between two headings, in degrees [0, 180]. Works on unwrapped values. */
 export function angleBetween(a: number, b: number): number {
   return Math.abs(((((a - b) % 360) + 540) % 360) - 180);
+}
+
+/** buildRoute, failing the test outright when the records make no route. */
+export function routeOf(records: FitRecord[]): Route {
+  const route = buildRoute(records);
+  if (!route) throw new Error('expected these records to make a route');
+  return route;
 }
