@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Map, BarChart2, Table2, Scissors, RefreshCw, Download, Moon, Sun, Monitor } from 'lucide-react';
+import { Map, BarChart2, Table2, Scissors, RefreshCw, Download, Moon, Sun, Monitor, Mountain } from 'lucide-react';
 import FileDropzone from './components/FileDropzone';
 import SummaryCards from './components/SummaryCards';
 import ChartsView from './components/ChartsView';
 import MapView from './components/MapView';
 import DataTable from './components/DataTable';
 import EditView from './components/EditView';
+import FlyoverTab from './components/FlyoverTab';
 import { exportToGPX } from './utils/fitParser';
 import { parseActivityFile } from './utils/activityParser';
 import { isTabEnabled, tabDisabledReason, defaultTab, type Tab } from './utils/tabAvailability';
@@ -44,6 +45,7 @@ export default function App() {
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'charts', label: 'Charts', icon: <BarChart2 className="w-4 h-4" /> },
     { id: 'map',    label: 'Map',    icon: <Map className="w-4 h-4" /> },
+    { id: 'flyover', label: '3D',    icon: <Mountain className="w-4 h-4" /> },
     { id: 'tables', label: 'Tables', icon: <Table2 className="w-4 h-4" /> },
     { id: 'edit',   label: 'Edit',   icon: <Scissors className="w-4 h-4" /> },
   ];
@@ -172,6 +174,7 @@ export default function App() {
                 <>
                   {activeTab === 'charts' && <ChartsView records={fitData.records} laps={fitData.laps} />}
                   {activeTab === 'map' && <MapView records={fitData.records} />}
+                  {activeTab === 'flyover' && <FlyoverTab records={fitData.records} />}
                   {activeTab === 'tables' && <DataTable data={fitData} />}
                   {activeTab === 'edit' && <EditView data={fitData} fileName={fileName} />}
                 </>
