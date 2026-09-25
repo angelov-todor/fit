@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest';
-import { isTabEnabled, tabDisabledReason, defaultTab } from '../utils/tabAvailability';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import {
+  isTabEnabled,
+  tabDisabledReason,
+  defaultTab,
+  FLYOVER_NO_KEY,
+  FLYOVER_NO_ROUTE,
+} from '../utils/tabAvailability';
 import type { FitRecord, ParsedFitData } from '../types/fit';
 
 function data(records: FitRecord[], source?: 'fit' | 'gpx'): ParsedFitData {
@@ -122,5 +128,39 @@ describe('defaultTab', () => {
 
   it('falls back to charts when nothing is enabled', () => {
     expect(defaultTab(data([]))).toBe('charts');
+  });
+});
+
+describe('isTabEnabled — flyover', () => {
+  const track: FitRecord[] = [gps, { position_lat: 42.71, position_long: 23.3 }];
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('is enabled for a GPS track when a MapTiler key is configured', () => {
+    vi.stubEnv('VITE_MAPTILER_KEY', 'test-key');
+    expect(isTabEnabled('flyover', data(track))).toBe(true);
+  });
+
+  it('explains a missing key', () => {
+    vi.stubEnv('VITE_MAPTILER_KEY', '');
+    expect(tabDisabledReason('flyover', data(track))).toBe(FLYOVER_NO_KEY);
+    expect(FLYOVER_NO_KEY).toBe("3D view isn't configured (no MapTiler key)");
+  });
+
+  it.each<[string, FitRecord[]]>([
+    ['no GPS', [{ heart_rate: 140 }]],
+    ['a single position', [gps, gps]],
+  ])('reports %s ahead of a missing key', (_label, records) => {
+    vi.stubEnv('VITE_MAPTILER_KEY', '');
+    expect(tabDisabledReason('flyover', data(records))).toBe(FLYOVER_NO_ROUTE);
+    expect(FLYOVER_NO_ROUTE).toBe('Not enough GPS data for a 3D flyover');
+  });
+
+  it('is never the tab a file opens on, because it spends tile quota', () => {
+    vi.stubEnv('VITE_MAPTILER_KEY', 'test-key');
+    expect(defaultTab(data(track))).not.toBe('flyover');
+    expect(defaultTab(data(track, 'gpx'))).not.toBe('flyover');
   });
 });

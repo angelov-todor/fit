@@ -1,6 +1,12 @@
 import type { FitRecord, ParsedFitData } from '../types/fit';
+import { hasFlyoverRoute } from './flyoverRoute';
+import { mapTilerKey } from './flyoverConfig';
 
-export type Tab = 'charts' | 'map' | 'tables' | 'edit';
+export type Tab = 'charts' | 'map' | 'flyover' | 'tables' | 'edit';
+
+/** Shared with FlyoverView, which shows the same text if it is ever reached anyway. */
+export const FLYOVER_NO_ROUTE = 'Not enough GPS data for a 3D flyover';
+export const FLYOVER_NO_KEY = "3D view isn't configured (no MapTiler key)";
 
 /**
  * Metrics worth plotting. Distance is deliberately excluded: it is derived for
@@ -32,6 +38,10 @@ export function tabDisabledReason(tab: Tab, data: ParsedFitData): string | undef
   switch (tab) {
     case 'map':
       return hasPosition(records) ? undefined : 'No GPS data in this file';
+    case 'flyover':
+      // The file's own problem first, then the app's.
+      if (!hasFlyoverRoute(records)) return FLYOVER_NO_ROUTE;
+      return mapTilerKey() ? undefined : FLYOVER_NO_KEY;
     case 'charts':
       return hasChartableMetric(records) ? undefined : 'No chartable metrics in this file';
     case 'tables':
