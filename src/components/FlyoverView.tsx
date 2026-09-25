@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LngLat, MapLibreMap, type GeoJSONSource } from 'maplibre-gl';
+import { LngLat, MapLibreMap, setWorkerUrl, type GeoJSONSource } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+// MapLibre looks for its worker beside its own module, which a bundler moves: the
+// dev server pre-bundles it into .vite/deps, and a build inlines it into this chunk.
+// Neither place has the worker file, so the map never loads. Give it a URL Vite
+// does serve and emit, bundled together with the worker's shared-chunk import.
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import type { FitRecord } from '../types/fit';
 import { buildRoute, positionAt, type Route } from '../utils/flyoverRoute';
 import { chaseCamera, MAX_PITCH } from '../utils/flyoverCamera';
@@ -10,6 +15,8 @@ import { buildStyle, routeGradient, TRAVELED_COLOR } from '../utils/flyoverStyle
 import { flyoverStats } from '../utils/flyoverStats';
 import { FLYOVER_NO_KEY, FLYOVER_NO_ROUTE } from '../utils/tabAvailability';
 import FlyoverControls, { FlyoverStatsPanel } from './FlyoverControls';
+
+setWorkerUrl(maplibreWorkerUrl);
 
 interface Props {
   records: FitRecord[];
@@ -254,7 +261,10 @@ export default function FlyoverView({ records }: Props) {
         </div>
       )}
       <div className="relative" style={{ height: '520px' }}>
-        <div ref={containerRef} className="absolute inset-0" />
+        {/* Sized by its parent, not by `absolute inset-0`: maplibre-gl.css sets
+            .maplibregl-map { position: relative }, which overrides Tailwind and would
+            collapse an absolutely-positioned container to zero height. */}
+        <div ref={containerRef} className="h-full w-full" />
         <FlyoverStatsPanel stats={stats} />
       </div>
       <FlyoverControls
