@@ -3,6 +3,7 @@ import {
   buildStyle,
   routeGradient,
   AHEAD_COLOR,
+  GRADIENT_EDGE,
   SATELLITE_TILE_SIZE,
   TERRAIN_TILE_SIZE,
   TRAVELED_COLOR,
@@ -32,14 +33,28 @@ describe('buildStyle', () => {
 
 describe('routeGradient', () => {
   it('is the traveled colour behind the rider and the ahead colour beyond', () => {
-    expect(routeGradient(0.3)).toEqual(['step', ['line-progress'], TRAVELED_COLOR, 0.3, AHEAD_COLOR]);
+    expect(routeGradient(0.3)).toEqual([
+      'interpolate', ['linear'], ['line-progress'],
+      0.3 - GRADIENT_EDGE, TRAVELED_COLOR,
+      0.3, AHEAD_COLOR,
+    ]);
+  });
+
+  it("is not a 'step', which MapLibre renders into a texture up to the GPU's maximum width, rebuilt per tile every frame", () => {
+    // An interpolate gets a fixed 256 px ramp per tile instead (draw_line updateGradientTexture).
+    expect((routeGradient(0.3) as unknown[])[0]).toBe('interpolate');
+  });
+
+  it('keeps the colour change within centimetres of the rider', () => {
+    // 1e-6 of a 122 km ride is 12 cm.
+    expect(GRADIENT_EDGE).toBeLessThanOrEqual(1e-6);
   });
 
   it.each([
     [-0.5, 0],
     [1.5, 1],
   ])('clamps %s to %s', (input, want) => {
-    expect((routeGradient(input) as unknown[])[3]).toBe(want);
+    expect((routeGradient(input) as unknown[])[5]).toBe(want);
   });
 });
 

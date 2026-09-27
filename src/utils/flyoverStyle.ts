@@ -35,12 +35,21 @@ export function buildStyle(key: string): StyleSpecification {
   };
 }
 
+/** Width of the colour change, as a fraction of the route: 12 cm on a 122 km ride. */
+export const GRADIENT_EDGE = 1e-6;
+
 /**
  * The route's colour along its length: traveled up to the rider, ahead after.
  * line-progress is a fraction of the line's Web-Mercator length, the same axis
  * as the flyover's progress, so the change of colour sits under the rider.
+ *
+ * A steep 'interpolate' rather than a 'step'. MapLibre renders a step into a
+ * colour ramp as wide as the whole line needs, up to the GPU's maximum texture
+ * width, and this changes every frame, so that ramp would be rebuilt and
+ * re-uploaded for every tile 60 times a second. Any other expression gets a
+ * fixed 256 px ramp per tile, which still places the edge to within a metre or so.
  */
 export function routeGradient(progress: number): ExpressionSpecification {
   const p = Math.min(Math.max(progress, 0), 1);
-  return ['step', ['line-progress'], TRAVELED_COLOR, p, AHEAD_COLOR];
+  return ['interpolate', ['linear'], ['line-progress'], p - GRADIENT_EDGE, TRAVELED_COLOR, p, AHEAD_COLOR];
 }

@@ -8,9 +8,9 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import type { FitRecord } from '../types/fit';
 import { buildRoute, positionAt, type Route } from '../utils/flyoverRoute';
-import { chaseCamera, groundFromTerrain, MAX_PITCH } from '../utils/flyoverCamera';
+import { CAMERA_GESTURES, chaseCamera, groundFromTerrain, MAX_PITCH, poseMoved, type CameraPose } from '../utils/flyoverCamera';
 import { advance, playFrom, type Speed } from '../utils/flyoverPlayback';
-import { mapTilerKey } from '../utils/flyoverConfig';
+import { mapTilerErrorKind, mapTilerKey, type MapTilerErrorKind } from '../utils/flyoverConfig';
 import { buildStyle, routeGradient, TRAVELED_COLOR } from '../utils/flyoverStyle';
 import { flyoverStats } from '../utils/flyoverStats';
 import { canRenderMap } from '../utils/webgl';
@@ -26,9 +26,7 @@ interface Props {
 /** How often the scrubber and readouts re-render during playback. */
 const UI_INTERVAL_MS = 100;
 
-type Banner = 'key' | 'quota';
-
-const BANNERS: Record<Banner, string> = {
+const BANNERS: Record<MapTilerErrorKind, string> = {
   key: 'MapTiler rejected the key.',
   quota: "MapTiler's monthly quota is used up.",
 };
@@ -47,17 +45,9 @@ function supportsWebGL(): boolean {
 
 /** Gestures fight the chase camera, so they are off while playing. */
 function setGestures(map: MapLibreMap, enabled: boolean) {
-  const handlers = [
-    map.dragPan,
-    map.dragRotate,
-    map.scrollZoom,
-    map.touchZoomRotate,
-    map.doubleClickZoom,
-    map.keyboard,
-  ];
-  for (const handler of handlers) {
-    if (enabled) handler.enable();
-    else handler.disable();
+  for (const name of CAMERA_GESTURES) {
+    if (enabled) map[name].enable();
+    else map[name].disable();
   }
 }
 
@@ -74,9 +64,13 @@ function riderDot(): HTMLDivElement {
   return dot;
 }
 
-/** Moves the camera, the traveled line and the rider marker to `progress`. */
-function drawFrame(map: MapLibreMap, rider: Marker, route: Route, progress: number) {
-  const pose = chaseCamera(route, progress, groundFromTerrain(p => map.queryTerrainElevation(p)));
+/** Where the camera belongs at `progress`, given the terrain loaded so far. */
+function poseAt(map: MapLibreMap, route: Route, progress: number): CameraPose {
+  return chaseCamera(route, progress, groundFromTerrain(p => map.queryTerrainElevation(p)));
+}
+
+/** Moves the camera, the traveled line and the rider marker to `pose` at `progress`. */
+function applyFrame(map: MapLibreMap, rider: Marker, pose: CameraPose, progress: number) {
   map.jumpTo(
     map.calculateCameraOptionsFromTo(
       new LngLat(pose.from.lng, pose.from.lat),
@@ -100,7 +94,8 @@ export default function FlyoverView({ records }: Props) {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
-  const riderRef = useRef<Marker | null>(null);
+  // Draws the frame at a progress; set by the effect that owns the map.
+  const drawRef = useRef<((progress: number) => void) | null>(null);
   const readyRef = useRef(false);
   // The live values; the state copies below drive rendering at UI_INTERVAL_MS.
   const progressRef = useRef(0);
@@ -110,7 +105,7 @@ export default function FlyoverView({ records }: Props) {
   const [progress, setProgress] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<Speed>(1);
-  const [banner, setBanner] = useState<Banner | null>(null);
+  const [banner, setBanner] = useState<MapTilerErrorKind | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -122,12 +117,26 @@ export default function FlyoverView({ records }: Props) {
     const map = new MapLibreMap({ container, style: buildStyle(key), maxPitch: MAX_PITCH, center: start, zoom: 14 });
     mapRef.current = map;
     const rider = new Marker({ element: riderDot() }).setLngLat(start).addTo(map);
-    riderRef.current = rider;
+
+    let lastPose: CameraPose | null = null;
+    // Set when the user drags or zooms while paused, so terrain redraws don't yank the view back.
+    let userMoved = false;
+    const draw = (p: number) => {
+      lastPose = poseAt(map, route, p);
+      applyFrame(map, rider, lastPose, p);
+      userMoved = false;
+    };
+    drawRef.current = draw;
 
     map.on('error', e => {
-      const status = (e.error as { status?: unknown } | undefined)?.status;
-      if (status === 401 || status === 403) setBanner('key');
-      else if (status === 429) setBanner('quota');
+      // A listener switches off MapLibre's own logging, so log here, and explain
+      // the failures a user can do something about.
+      console.error(e.error);
+      const kind = mapTilerErrorKind(e.error);
+      if (kind) setBanner(kind);
+    });
+    map.on('movestart', e => {
+      if (e.originalEvent) userMoved = true; // jumpTo's own movestart has no originalEvent
     });
 
     map.on('load', () => {
@@ -147,11 +156,15 @@ export default function FlyoverView({ records }: Props) {
         paint: { 'line-width': 5, 'line-gradient': routeGradient(progressRef.current) },
       });
       readyRef.current = true;
-      drawFrame(map, rider, route, progressRef.current);
-      // Terrain heights are unknown until its tiles arrive; redraw a paused view once they have.
-      map.once('idle', () => {
-        if (!playingRef.current) drawFrame(map, rider, route, progressRef.current);
-      });
+      draw(progressRef.current);
+    });
+
+    // Terrain heights are unknown until its tiles arrive, which can be after any
+    // scrub. Once tiles settle, redraw a paused view if they moved the camera;
+    // poseMoved stops this once the pose settles.
+    map.on('idle', () => {
+      if (!readyRef.current || playingRef.current || userMoved || !lastPose) return;
+      if (poseMoved(lastPose, poseAt(map, route, progressRef.current))) draw(progressRef.current);
     });
 
     let frame = 0;
@@ -163,7 +176,7 @@ export default function FlyoverView({ records }: Props) {
       if (readyRef.current && playingRef.current) {
         const next = advance(progressRef.current, dt, speedRef.current);
         progressRef.current = next;
-        drawFrame(map, rider, route, next);
+        draw(next);
         const finished = next >= 1;
         if (finished) {
           playingRef.current = false;
@@ -183,7 +196,7 @@ export default function FlyoverView({ records }: Props) {
       cancelAnimationFrame(frame);
       readyRef.current = false;
       mapRef.current = null;
-      riderRef.current = null;
+      drawRef.current = null;
       rider.remove();
       map.remove();
     };
@@ -195,9 +208,7 @@ export default function FlyoverView({ records }: Props) {
   );
 
   const redraw = (p: number) => {
-    const map = mapRef.current;
-    const rider = riderRef.current;
-    if (map && rider && route && readyRef.current) drawFrame(map, rider, route, p);
+    if (readyRef.current) drawRef.current?.(p);
   };
 
   const togglePlay = () => {

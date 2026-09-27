@@ -75,3 +75,38 @@ export function pitchDeg(pose: CameraPose): number {
   const horizontal = haversineMeters(pose.from.lat, pose.from.lng, pose.to.lat, pose.to.lng);
   return (Math.atan2(horizontal, pose.fromAltitude - pose.toAltitude) * 180) / Math.PI;
 }
+
+/**
+ * Every camera gesture MapLibre 6 has. They fight the chase camera, so all of
+ * them are switched off while playing and back on when paused.
+ */
+export const CAMERA_GESTURES = [
+  'dragPan',
+  'dragRotate',
+  'scrollZoom',
+  'boxZoom',
+  'touchZoomRotate',
+  'touchPitch',
+  'doubleClickZoom',
+  'keyboard',
+] as const;
+
+/** Half a metre in height, or about a centimetre on the ground: anything less is float noise. */
+const HEIGHT_TOLERANCE_M = 0.5;
+const POSITION_TOLERANCE_DEG = 1e-7;
+
+/**
+ * Whether two poses differ by more than float noise. Redrawing a paused view
+ * whenever terrain tiles arrive stops once this says the pose has settled,
+ * rather than redrawing on every idle event forever.
+ */
+export function poseMoved(a: CameraPose, b: CameraPose): boolean {
+  return (
+    Math.abs(a.fromAltitude - b.fromAltitude) > HEIGHT_TOLERANCE_M ||
+    Math.abs(a.toAltitude - b.toAltitude) > HEIGHT_TOLERANCE_M ||
+    Math.abs(a.from.lng - b.from.lng) > POSITION_TOLERANCE_DEG ||
+    Math.abs(a.from.lat - b.from.lat) > POSITION_TOLERANCE_DEG ||
+    Math.abs(a.to.lng - b.to.lng) > POSITION_TOLERANCE_DEG ||
+    Math.abs(a.to.lat - b.to.lat) > POSITION_TOLERANCE_DEG
+  );
+}

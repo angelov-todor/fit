@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chaseCamera, groundFromTerrain, pitchDeg, DEFAULT_CAMERA, MAX_PITCH } from '../utils/flyoverCamera';
+import { CAMERA_GESTURES, chaseCamera, groundFromTerrain, pitchDeg, poseMoved, DEFAULT_CAMERA, MAX_PITCH } from '../utils/flyoverCamera';
 import { bearingDeg, haversineMeters } from '../utils/geo';
 import { SOFIA, angleBetween, end, join, routeOf, straight, toRecords } from './flyoverFixtures';
 
@@ -77,5 +77,33 @@ describe('groundFromTerrain', () => {
     [null, null],
   ])('passes a terrain reading of %s through as %s', (reading, want) => {
     expect(groundFromTerrain(() => reading)(SOFIA)).toBe(want);
+  });
+});
+
+describe('CAMERA_GESTURES', () => {
+  it('covers every camera gesture MapLibre 6 has, so none fights playback', () => {
+    expect([...CAMERA_GESTURES].sort()).toEqual(
+      ['boxZoom', 'doubleClickZoom', 'dragPan', 'dragRotate', 'keyboard', 'scrollZoom', 'touchPitch', 'touchZoomRotate'],
+    );
+  });
+});
+
+describe('poseMoved', () => {
+  const r = () => routeOf(toRecords(straight(SOFIA, 0, 2000), () => ({ altitude: 250 })));
+
+  it('is false for the same pose, so a settled view is not redrawn in a loop', () => {
+    expect(poseMoved(chaseCamera(r(), 0.5, flat), chaseCamera(r(), 0.5, flat))).toBe(false);
+  });
+
+  it('is true once terrain arrives and lifts the camera', () => {
+    const before = chaseCamera(r(), 0.5, () => null);
+    const after = chaseCamera(r(), 0.5, () => 900);
+    expect(poseMoved(before, after)).toBe(true);
+  });
+
+  it('ignores sub-metre float noise', () => {
+    const a = chaseCamera(r(), 0.5, () => 400);
+    const b = { ...a, fromAltitude: a.fromAltitude + 0.2, toAltitude: a.toAltitude - 0.2 };
+    expect(poseMoved(a, b)).toBe(false);
   });
 });
