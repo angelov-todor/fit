@@ -42,3 +42,13 @@ describe('routeGradient', () => {
     expect((routeGradient(input) as unknown[])[3]).toBe(want);
   });
 });
+
+describe('tile sizes', () => {
+  // Measured against the live service on 2026-09-27: satellite-v2 serves 512 px
+  // JPEGs and terrain-rgb-v2 512 px WebPs. Declaring 256 would make MapLibre
+  // fetch a zoom level deeper, about 4x the tile requests against the quota.
+  it('match the 512 px tiles MapTiler serves', () => {
+    expect(SATELLITE_TILE_SIZE).toBe(512);
+    expect(TERRAIN_TILE_SIZE).toBe(512);
+  });
+});

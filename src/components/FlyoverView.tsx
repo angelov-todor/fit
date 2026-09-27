@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LngLat, MapLibreMap, setWorkerUrl, type GeoJSONSource } from 'maplibre-gl';
+import { LngLat, MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 // MapLibre looks for its worker beside its own module, which a bundler moves: the
 // dev server pre-bundles it into .vite/deps, and a build inlines it into this chunk.
@@ -61,8 +61,21 @@ function setGestures(map: MapLibreMap, enabled: boolean) {
   }
 }
 
+/**
+ * The rider: a DOM marker rather than a GeoJSON circle. GeoJSONSource.setData is
+ * asynchronous (the worker re-tiles it), so a circle trails the camera by a few
+ * frames, tens of metres on a long ride at speed, and drifts off the point where
+ * the route changes colour. A marker moves in the same frame as the camera.
+ */
+function riderDot(): HTMLDivElement {
+  const dot = document.createElement('div');
+  dot.className = 'w-4 h-4 rounded-full border-2 border-white shadow-md';
+  dot.style.backgroundColor = TRAVELED_COLOR;
+  return dot;
+}
+
 /** Moves the camera, the traveled line and the rider marker to `progress`. */
-function drawFrame(map: MapLibreMap, route: Route, progress: number) {
+function drawFrame(map: MapLibreMap, rider: Marker, route: Route, progress: number) {
   const pose = chaseCamera(route, progress, groundFromTerrain(p => map.queryTerrainElevation(p)));
   map.jumpTo(
     map.calculateCameraOptionsFromTo(
@@ -73,10 +86,7 @@ function drawFrame(map: MapLibreMap, route: Route, progress: number) {
     ),
   );
   map.setPaintProperty('route', 'line-gradient', routeGradient(progress));
-  (map.getSource('rider') as GeoJSONSource | undefined)?.setData({
-    type: 'Point',
-    coordinates: [pose.to.lng, pose.to.lat],
-  });
+  rider.setLngLat([pose.to.lng, pose.to.lat]);
 }
 
 /**
@@ -90,6 +100,7 @@ export default function FlyoverView({ records }: Props) {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  const riderRef = useRef<Marker | null>(null);
   const readyRef = useRef(false);
   // The live values; the state copies below drive rendering at UI_INTERVAL_MS.
   const progressRef = useRef(0);
@@ -110,6 +121,8 @@ export default function FlyoverView({ records }: Props) {
     const start: [number, number] = [route.points[0].lng, route.points[0].lat];
     const map = new MapLibreMap({ container, style: buildStyle(key), maxPitch: MAX_PITCH, center: start, zoom: 14 });
     mapRef.current = map;
+    const rider = new Marker({ element: riderDot() }).setLngLat(start).addTo(map);
+    riderRef.current = rider;
 
     map.on('error', e => {
       const status = (e.error as { status?: unknown } | undefined)?.status;
@@ -133,26 +146,11 @@ export default function FlyoverView({ records }: Props) {
         layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: { 'line-width': 5, 'line-gradient': routeGradient(progressRef.current) },
       });
-      map.addSource('rider', {
-        type: 'geojson',
-        data: { type: 'Point', coordinates: [route.points[0].lng, route.points[0].lat] },
-      });
-      map.addLayer({
-        id: 'rider',
-        type: 'circle',
-        source: 'rider',
-        paint: {
-          'circle-radius': 7,
-          'circle-color': TRAVELED_COLOR,
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 2,
-        },
-      });
       readyRef.current = true;
-      drawFrame(map, route, progressRef.current);
+      drawFrame(map, rider, route, progressRef.current);
       // Terrain heights are unknown until its tiles arrive; redraw a paused view once they have.
       map.once('idle', () => {
-        if (!playingRef.current) drawFrame(map, route, progressRef.current);
+        if (!playingRef.current) drawFrame(map, rider, route, progressRef.current);
       });
     });
 
@@ -165,7 +163,7 @@ export default function FlyoverView({ records }: Props) {
       if (readyRef.current && playingRef.current) {
         const next = advance(progressRef.current, dt, speedRef.current);
         progressRef.current = next;
-        drawFrame(map, route, next);
+        drawFrame(map, rider, route, next);
         const finished = next >= 1;
         if (finished) {
           playingRef.current = false;
@@ -185,6 +183,8 @@ export default function FlyoverView({ records }: Props) {
       cancelAnimationFrame(frame);
       readyRef.current = false;
       mapRef.current = null;
+      riderRef.current = null;
+      rider.remove();
       map.remove();
     };
   }, [route, key, webgl]);
@@ -196,7 +196,8 @@ export default function FlyoverView({ records }: Props) {
 
   const redraw = (p: number) => {
     const map = mapRef.current;
-    if (map && route && readyRef.current) drawFrame(map, route, p);
+    const rider = riderRef.current;
+    if (map && rider && route && readyRef.current) drawFrame(map, rider, route, p);
   };
 
   const togglePlay = () => {

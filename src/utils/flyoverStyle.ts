@@ -3,12 +3,13 @@ import type { ExpressionSpecification, StyleSpecification } from 'maplibre-gl';
 const TILES = 'https://api.maptiler.com/tiles';
 
 /**
- * Pixel size of the tiles each source serves. MapTiler offers 256 px and 512 px
- * variants, and a mismatch renders them blurry or too small. Confirmed against
- * a real key in Task 11 of the implementation plan.
+ * Pixel size of the tiles each source serves, measured against the live service
+ * (satellite-v2: 512 px JPEG, terrain-rgb-v2: 512 px WebP). A mismatch renders
+ * tiles blurry or too small, and declaring 256 for these would make MapLibre
+ * fetch a zoom level deeper, about 4x the tile requests.
  */
-export const SATELLITE_TILE_SIZE = 256;
-export const TERRAIN_TILE_SIZE = 256;
+export const SATELLITE_TILE_SIZE = 512;
+export const TERRAIN_TILE_SIZE = 512;
 
 /** Matches the Leaflet route in MapView. */
 export const TRAVELED_COLOR = '#3b82f6';
