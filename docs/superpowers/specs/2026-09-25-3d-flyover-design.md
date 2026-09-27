@@ -72,7 +72,7 @@ Settled during brainstorming. Push back if any turn out to be wrong in practice.
 7. **Heading is precomputed per route point**, not tracked during playback. It starts from a chord bearing, 150 m behind to 150 m ahead. Chords too crooked to mean anything (U-turns, GPS drift at stops) are discarded and filled from their neighbours, and the result is smoothed over ±150 m in unwrapped degrees. The camera is a function of the route and the progress alone, so scrubbing from either direction gives the same view. A turnaround becomes a gradual rotation instead of a 180° snap.
 8. **Terrain clamp:** the camera stays at least 30 m above the ground directly beneath it.
 9. **The rider marker sits on the terrain**, not at the recorded altitude. The overlay reports the recorded altitude.
-10. **Traveled route** is drawn with `line-gradient` stepped on `line-progress`, updated with one `setPaintProperty` per frame. The GeoJSON is never re-sliced.
+10. **Traveled route** is drawn with a `line-gradient` that changes colour at the rider's `line-progress`, updated with one `setPaintProperty` per frame. It is a steep `interpolate` (an edge 1e-6 of the route wide), not a `step`: MapLibre renders a step's colour ramp as wide as the line needs, up to the GPU's maximum texture width, and would rebuild it for every tile on every frame, while any other expression gets a fixed 256 px ramp per tile. The GeoJSON is never re-sliced.
 11. **Interaction:** map gestures are disabled while playing. When paused you can look around freely, and resuming snaps back to the chase view.
 12. **3D is never the default tab**, because every view spends tile quota.
 13. **No key → the tab is disabled** with a reason. The build still succeeds without the secret.
@@ -314,8 +314,8 @@ export function routeGradient(progress: number): ExpressionSpecification;
   and a `tileSize` that doesn't match the tiles renders them blurry or too small.
   The sizes start at 256, and the keyed verification task confirms or corrects
   all three.
-- **`routeGradient`** returns `['step', ['line-progress'], TRAVELED_COLOR, p, AHEAD_COLOR]`,
-  with `p` clamped to [0, 1]. The traveled colour matches the Leaflet route.
+- **`routeGradient`** returns `['interpolate', ['linear'], ['line-progress'], p - GRADIENT_EDGE, TRAVELED_COLOR, p, AHEAD_COLOR]`,
+  with `p` clamped to [0, 1] and `GRADIENT_EDGE = 1e-6`. The traveled colour matches the Leaflet route.
 
 ### `flyoverStats.ts`
 
@@ -535,3 +535,12 @@ The camera no longer takes a `headingWindowM`. Other changes made alongside it:
   showed that a per-sample moving average stepped 9° at a turnaround: it
   flickers as samples cross the window edge. The distance-weighted mean
   measured 6.0°.
+
+**2026-09-27, during keyed verification and the PR self-review.**
+
+- Tiles are 512 px, as measured against the live service.
+- The rider is a DOM `Marker`, because `GeoJSONSource.setData` is asynchronous and the dot trailed the camera.
+- The route gradient is a steep `interpolate` rather than a `step` (decision 10).
+- All eight of MapLibre 6's gestures are disabled while playing, including `touchPitch` and `boxZoom`.
+- Map errors are logged as well as mapped to banners, because a listener switches off MapLibre's own logging.
+- A paused view is redrawn whenever arriving terrain moves the pose, not only on the first idle, unless the user has moved the camera.
