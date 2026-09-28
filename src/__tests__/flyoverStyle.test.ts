@@ -4,6 +4,7 @@ import {
   routeGradient,
   AHEAD_COLOR,
   GRADIENT_EDGE,
+  SATELLITE_MAX_ZOOM,
   SATELLITE_TILE_SIZE,
   TERRAIN_TILE_SIZE,
   TRAVELED_COLOR,
@@ -17,6 +18,7 @@ describe('buildStyle', () => {
       type: 'raster',
       url: 'https://api.maptiler.com/tiles/satellite-v2/tiles.json?key=abc123',
       tileSize: SATELLITE_TILE_SIZE,
+      maxzoom: SATELLITE_MAX_ZOOM,
     });
     expect(style.sources.terrain).toEqual({
       type: 'raster-dem',
@@ -65,5 +67,19 @@ describe('tile sizes', () => {
   it('match the 512 px tiles MapTiler serves', () => {
     expect(SATELLITE_TILE_SIZE).toBe(512);
     expect(TERRAIN_TILE_SIZE).toBe(512);
+  });
+});
+
+describe('satellite detail cap', () => {
+  // Measured over the same 2.4 km corridor with a cold cache: uncapped 111
+  // satellite tiles per km, capped at 17 36 per km, and no visible difference
+  // at chase-camera distance. Most uncapped requests were z18-19 tiles.
+  it('stops at zoom 17, about a third of the uncapped tile requests', () => {
+    expect(SATELLITE_MAX_ZOOM).toBe(17);
+    expect(buildStyle('k').sources.satellite).toMatchObject({ maxzoom: 17 });
+  });
+
+  it('leaves the terrain at its own resolution', () => {
+    expect(buildStyle('k').sources.terrain).not.toHaveProperty('maxzoom');
   });
 });
