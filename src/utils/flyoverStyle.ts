@@ -11,6 +11,15 @@ const TILES = 'https://api.maptiler.com/tiles';
 export const SATELLITE_TILE_SIZE = 512;
 export const TERRAIN_TILE_SIZE = 512;
 
+/**
+ * The finest satellite zoom requested. MapTiler serves up to 22, but at chase-camera
+ * distance anything past 17 is detail nobody can see: measured over the same
+ * 2.4 km with a cold cache, uncapped cost 111 tiles per km (mostly z18-19), a cap
+ * of 17 cost 36, and the frames looked the same. Beyond it MapLibre overzooms z17
+ * tiles. 16 would halve requests again, at the cost of a softer foreground.
+ */
+export const SATELLITE_MAX_ZOOM = 17;
+
 /** Matches the Leaflet route in MapView. */
 export const TRAVELED_COLOR = '#3b82f6';
 export const AHEAD_COLOR = 'rgba(255, 255, 255, 0.45)';
@@ -24,6 +33,7 @@ export function buildStyle(key: string): StyleSpecification {
         type: 'raster',
         url: `${TILES}/satellite-v2/tiles.json?key=${k}`,
         tileSize: SATELLITE_TILE_SIZE,
+        maxzoom: SATELLITE_MAX_ZOOM,
       },
       terrain: {
         type: 'raster-dem',

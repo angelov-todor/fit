@@ -10,6 +10,7 @@ import FlyoverTab from './components/FlyoverTab';
 import { exportToGPX } from './utils/fitParser';
 import { parseActivityFile } from './utils/activityParser';
 import { isTabEnabled, tabDisabledReason, defaultTab, type Tab } from './utils/tabAvailability';
+import { mapTilerKey } from './utils/flyoverConfig';
 import { useDarkMode } from './hooks/useDarkMode';
 import type { ParsedFitData } from './types/fit';
 
@@ -51,6 +52,14 @@ export default function App() {
   ];
 
   const ThemeIcon = theme === 'system' ? Monitor : theme === 'dark' ? Moon : Sun;
+
+  // The flyover card only on builds that can show it: without a key its tab is disabled.
+  const landingFeatures = [
+    { icon: '📊', label: 'Interactive Charts', desc: 'HR, power, speed, cadence' },
+    { icon: '🗺️', label: 'GPS Map', desc: 'View your route on a map' },
+    ...(mapTilerKey() ? [{ icon: '🏔️', label: '3D Flyover', desc: 'Chase your route over 3D terrain' }] : []),
+    { icon: '📋', label: 'Data Tables', desc: 'Browse all FIT messages' },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -103,7 +112,7 @@ export default function App() {
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">FIT File Viewer</h1>
               <p className="text-slate-500 dark:text-slate-400">
-                View GPS tracks, charts, and data from Garmin FIT and GPX files — all locally in your browser
+                View GPS tracks, charts, a 3D flyover and data from Garmin FIT and GPX files — your files never leave your browser
               </p>
             </div>
             <FileDropzone onFile={handleFile} loading={loading} />
@@ -112,12 +121,8 @@ export default function App() {
                 <strong>Error:</strong> {error}
               </div>
             )}
-            <div className="grid grid-cols-3 gap-3 text-center text-sm text-slate-500 dark:text-slate-400 pt-4">
-              {[
-                { icon: '📊', label: 'Interactive Charts', desc: 'HR, power, speed, cadence' },
-                { icon: '🗺️', label: 'GPS Map', desc: 'View your route on a map' },
-                { icon: '📋', label: 'Data Tables', desc: 'Browse all FIT messages' },
-              ].map(f => (
+            <div className={`grid ${landingFeatures.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'} gap-3 text-center text-sm text-slate-500 dark:text-slate-400 pt-4`}>
+              {landingFeatures.map(f => (
                 <div key={f.label} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
                   <div className="text-2xl mb-1">{f.icon}</div>
                   <div className="font-semibold text-slate-700 dark:text-slate-200">{f.label}</div>
