@@ -71,9 +71,9 @@ describe('tile sizes', () => {
 });
 
 describe('satellite detail cap', () => {
-  // Measured over the same 2.4 km corridor with a cold cache: uncapped 111
-  // satellite tiles per km, capped at 17 36 per km, and no visible difference
-  // at chase-camera distance. Most uncapped requests were z18-19 tiles.
+  // Measured over the same 2.4 km corridor with a cold cache: 111 satellite
+  // tiles per km uncapped (mostly z18-19) against 36 per km with a zoom-17 cap,
+  // with no visible difference at chase-camera distance.
   it('stops at zoom 17, about a third of the uncapped tile requests', () => {
     expect(SATELLITE_MAX_ZOOM).toBe(17);
     expect(buildStyle('k').sources.satellite).toMatchObject({ maxzoom: 17 });

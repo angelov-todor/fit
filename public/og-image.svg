@@ -42,11 +42,15 @@
     </g>
     <g transform="translate(452, 540)">
       <rect width="170" height="48" rx="24" fill="white" fill-opacity="0.18"/>
-      <text x="85" y="32" text-anchor="middle">Trim &amp; Export</text>
+      <text x="85" y="32" text-anchor="middle">3D Flyover</text>
     </g>
     <g transform="translate(638, 540)">
-      <rect width="220" height="48" rx="24" fill="white" fill-opacity="0.18"/>
-      <text x="110" y="32" text-anchor="middle">100% Local</text>
+      <rect width="190" height="48" rx="24" fill="white" fill-opacity="0.18"/>
+      <text x="95" y="32" text-anchor="middle">Trim &amp; Export</text>
+    </g>
+    <g transform="translate(844, 540)">
+      <rect width="200" height="48" rx="24" fill="white" fill-opacity="0.18"/>
+      <text x="100" y="32" text-anchor="middle">Never uploaded</text>
     </g>
   </g>
 </svg>
