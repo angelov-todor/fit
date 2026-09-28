@@ -103,7 +103,7 @@ export default function App() {
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">FIT File Viewer</h1>
               <p className="text-slate-500 dark:text-slate-400">
-                View GPS tracks, charts, and data from Garmin FIT and GPX files — all locally in your browser
+                View GPS tracks, charts, a 3D flyover and data from Garmin FIT and GPX files — your files never leave your browser
               </p>
             </div>
             <FileDropzone onFile={handleFile} loading={loading} />
@@ -112,10 +112,11 @@ export default function App() {
                 <strong>Error:</strong> {error}
               </div>
             )}
-            <div className="grid grid-cols-3 gap-3 text-center text-sm text-slate-500 dark:text-slate-400 pt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-sm text-slate-500 dark:text-slate-400 pt-4">
               {[
                 { icon: '📊', label: 'Interactive Charts', desc: 'HR, power, speed, cadence' },
                 { icon: '🗺️', label: 'GPS Map', desc: 'View your route on a map' },
+                { icon: '🏔️', label: '3D Flyover', desc: 'Chase your route over 3D terrain' },
                 { icon: '📋', label: 'Data Tables', desc: 'Browse all FIT messages' },
               ].map(f => (
                 <div key={f.label} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
